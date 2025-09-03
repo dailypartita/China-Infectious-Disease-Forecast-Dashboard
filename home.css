@@ -1,0 +1,143 @@
+.home-page {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.hero-panel {
+  text-align: center;
+  padding: 4rem 2.5rem 3.5rem;
+  background: linear-gradient(180deg, #eef3fa 0%, #f8fafc 55%, #ffffff 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 58, 128, 0.06);
+}
+
+.hero-title {
+  font-size: 2.25rem;
+  font-weight: 600;
+  color: #003a80;
+  margin: 0 0 1rem;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.lang-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.lang-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8125rem;
+  color: #aaa;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lang-btn:hover {
+  color: #003a80;
+}
+
+.lang-btn.active {
+  color: #003a80;
+  font-weight: 600;
+  background: rgba(0, 58, 128, 0.08);
+}
+
+.lang-sep {
+  color: #ddd;
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.hero-subtitle {
+  color: #555;
+  font-size: 1.1rem;
+  margin: 0 auto 2.75rem;
+  line-height: 1.65;
+  max-width: 520px;
+}
+
+.lang-body.hidden {
+  display: none;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2.75rem;
+}
+
+.hero-actions .btn {
+  min-width: 160px;
+  padding: 0.625rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.hero-meta {
+  color: #999;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.hero-meta a {
+  color: #777;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.hero-meta a:hover {
+  color: #003a80;
+}
+
+.hero-credits-box {
+  margin-top: 2rem;
+  padding: 1.75rem 2rem;
+  background: #fafbfc;
+  border: 1px solid #e8ecf0;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.hero-credits-label {
+  color: #003a80;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.hero-credits-label:not(:first-child) {
+  margin-top: 1.25rem;
+}
+
+.hero-credits {
+  color: #666;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+.hero-credits a {
+  color: #555;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 58, 128, 0.2);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-credits a:hover {
+  color: #003a80;
+  border-bottom-color: rgba(0, 58, 128, 0.45);
+}

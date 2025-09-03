@@ -1,0 +1,65 @@
+[
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "关于团队",
+    "section": "",
+    "text": "This is our staff\n\n\n\n\n\nDale is the boss\n\n\n\n\n\n\n\n\nBubblegum is the scientist"
+  },
+  {
+    "objectID": "about.html#introduction",
+    "href": "about.html#introduction",
+    "title": "关于团队",
+    "section": "",
+    "text": "This is our staff\n\n\n\n\n\nDale is the boss\n\n\n\n\n\n\n\n\nBubblegum is the scientist"
+  },
+  {
+    "objectID": "eval.html",
+    "href": "eval.html",
+    "title": "China Infectious Disease Forecast Hub",
+    "section": "",
+    "text": "this is replaced"
+  },
+  {
+    "objectID": "data.html",
+    "href": "data.html",
+    "title": "Data Access",
+    "section": "",
+    "text": "All model-output, target, and configuration files for this hub are hosted on GitHub. You can access the data directly from the repository at dailypartita/China-Infectious-Disease-Forecast-Hub.\nGitHub serves as the primary interface for operating the hub and collecting forecasts from modelers. You can access hub data by cloning the repository or downloading files directly from GitHub."
+  },
+  {
+    "objectID": "data.html#accessing-hub-data-from-github",
+    "href": "data.html#accessing-hub-data-from-github",
+    "title": "Data Access",
+    "section": "",
+    "text": "All model-output, target, and configuration files for this hub are hosted on GitHub. You can access the data directly from the repository at dailypartita/China-Infectious-Disease-Forecast-Hub.\nGitHub serves as the primary interface for operating the hub and collecting forecasts from modelers. You can access hub data by cloning the repository or downloading files directly from GitHub."
+  },
+  {
+    "objectID": "data.html#data-access-methods",
+    "href": "data.html#data-access-methods",
+    "title": "Data Access",
+    "section": "Data Access Methods",
+    "text": "Data Access Methods\nThe sections below provide examples for accessing hub data depending on your goals and preferred tools:\n\n\n\nAccess Method\nDescription\n\n\n\n\nGit/GitHub\nClone the repository for full local access\n\n\nGitHub Raw Files\nDirect HTTP access to individual files\n\n\nGitHub API\nProgrammatic access to repository contents\n\n\n\n\nGit/GitHub Direct AccessGitHub Raw FilesGitHub API\n\n\n\nCloning the Repository\nTo get a complete local copy of all hub data:\ngit clone https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub.git\ncd China-Infectious-Disease-Forecast-Hub\nThis gives you access to: - model-output/: All model forecasts - target-data/: Observed data (time-series.csv) - hub-config/: Hub configuration files - model-metadata/: Model metadata files\n\n\nRepository Structure\nChina-Infectious-Disease-Forecast-Hub/\n├── model-output/          # Model forecasts by team\n│   ├── GZNL-test_001/\n│   ├── GZNL-test_002/\n│   ├── GZNL-test_003/\n│   └── GZNL-test_004/\n├── target-data/           # Observed/target data  \n│   └── time-series.csv\n├── hub-config/           # Configuration files\n├── model-metadata/       # Model descriptions\n└── README.md\n\n\n\n\nAccessing Individual Files\nYou can directly download individual files using GitHub’s raw file URLs:\n# R example: Load target data\nlibrary(readr)\ntarget_data &lt;- read_csv(\"https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/target-data/time-series.csv\")\n\n# Load a specific model's forecast\nmodel_data &lt;- read_csv(\"https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/model-output/GZNL-test_001/2025-08-28-GZNL-test_001.csv\")\n# Python example: Load target data\nimport pandas as pd\ntarget_data = pd.read_csv(\"https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/target-data/time-series.csv\")\n\n# Load a specific model's forecast  \nmodel_data = pd.read_csv(\"https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/model-output/GZNL-test_001/2025-08-28-GZNL-test_001.csv\")\n\n\n\n\nProgrammatic Access\nUse the GitHub API to programmatically explore repository contents:\n# R example using httr\nlibrary(httr)\nlibrary(jsonlite)\n\n# List all model teams\nresponse &lt;- GET(\"https://api.github.com/repos/dailypartita/China-Infectious-Disease-Forecast-Hub/contents/model-output\")\nteams &lt;- fromJSON(content(response, \"text\"))$name\nprint(teams)\n# Python example using requests\nimport requests\n\n# List all model teams\nresponse = requests.get(\"https://api.github.com/repos/dailypartita/China-Infectious-Disease-Forecast-Hub/contents/model-output\")\nteams = [item['name'] for item in response.json()]\nprint(teams)\n\n\nBatch Download Script\n#!/bin/bash\n# Download all model outputs for a specific date\nDATE=\"2025-08-28\"\nmkdir -p model-outputs-${DATE}\n\nfor team in GZNL-test_001 GZNL-test_002 GZNL-test_003 GZNL-test_004; do\n    wget \"https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/model-output/${team}/${DATE}-${team}.csv\" \\\n         -O \"model-outputs-${DATE}/${team}.csv\"\ndone"
+  },
+  {
+    "objectID": "data.html#data-format",
+    "href": "data.html#data-format",
+    "title": "Data Access",
+    "section": "Data Format",
+    "text": "Data Format\nAll model output files in this hub are stored in CSV format and follow the Hubverse data format standards.\n\nTarget Data\nThe target data (target-data/time-series.csv) is a long table with a target column mixing three targets:\n\nwk inc covid prop ili — weekly SARS-CoV-2 positivity rate among department influenza-like illness (ILI) cases\nwk inc flu prop ili — weekly influenza virus positivity rate among ILI cases\nmo inc dengue cases — monthly reported dengue cases (monthly frequency; date is the first day of each month)\n\nThe two ILI positivity targets come from China CDC’s weekly National Sentinel Surveillance of Acute Respiratory Infectious Diseases; dengue cases come from China CDC’s monthly notifiable infectious disease surveillance report.\n\n\nModel Output Data\nEach model output file contains quantile forecasts with the following columns: - reference_date: The date the forecast was made - target: The forecasting target (wk inc covid prop ili, wk inc flu prop ili, or mo inc dengue cases) - target_end_date: The date for which the prediction is made - location: Geographic location code (CN for China) - output_type: Type of prediction (quantile) - output_type_id: Quantile level (0.01, 0.025, 0.05, …, 0.975, 0.99) - value: The predicted value\nFor more details on the data format and hub structure, see the repository README."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Introduction",
+    "section": "",
+    "text": "China Infectious Disease Forecast Hub\n\n  English\n  ·\n  中文\n\n\nRespiratory pathogen positivity & dengue · multi-model forecasting & evaluation\n\n  View Forecasts\n  Model Evaluation\n\nData from CDC sentinel surveillance · Hubverse standard\n\n\n呼吸道病原体阳性率与登革热 · 多模型预测与评估\n\n  查看预测\n  模型评估\n\n数据来源 CDC 哨点监测 · 遵循 Hubverse 标准\n\n\n\n\nContributors\nForecasts provided by Xiamen University CTModelling team, Macau University of Science and Technology (MUST), Lanzhou University (LZU), and Guangzhou National Laboratory (GZNL).\nPlatform\nHubverse-CN integrated and maintained by the Bioinformatics and AI Research Department, Guangzhou National Laboratory.\n\n\n预测贡献\n预测结果由厦门大学 CTModelling team、澳门科技大学（MUST）、兰州大学（LZU）、广州国家实验室（GZNL）提供。\n平台维护\nHubverse-CN 由广州国家实验室-生物信息与人工智能研究部整合维护。"
+  },
+  {
+    "objectID": "forecast.html",
+    "href": "forecast.html",
+    "title": "China Infectious Disease Forecast Hub",
+    "section": "",
+    "text": "this is replaced"
+  }
+]
