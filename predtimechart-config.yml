@@ -20,7 +20,7 @@ initial_checked_models:
   - XMU_CTModelling-TCN
   - MUST-SEIRS
 
-disclaimer: 此dashboard展示中国新冠与流感阳性率的多模型预测结果，数据来源于中国疾控中心每周急性呼吸道传染病哨点监测；登革热月频预测的图表展示将于后续支持。
+disclaimer: 此dashboard展示中国新冠与流感阳性率的多模型预测结果，数据来源于中国疾控中心每周急性呼吸道传染病哨点监测；登革热月度报告病例数见 Dengue 登革热 页面。
 task_id_text:
   location:
     CN: China

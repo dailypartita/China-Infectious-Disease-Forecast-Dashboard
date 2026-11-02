@@ -4,4 +4,5 @@ title: China Infectious Disease Forecast Hub
 html:
   css: home.css
 pages:
+  - dengue.qmd
   - data.qmd

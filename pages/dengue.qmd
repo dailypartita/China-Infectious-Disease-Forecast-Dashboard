@@ -1,0 +1,88 @@
+---
+title: "Dengue 登革热"
+---
+
+## 全国登革热月度报告病例数 · Monthly reported dengue cases in China
+
+本页展示中国疾控中心《法定传染病疫情概况》月度报告中的**登革热报告病例数**（全国，整数计数）。
+月报通常在次月 2–3 周后发布，因此图中最新月份为最近一个已完整报告的月份。
+预测页的新冠/流感为周频指标，登革热为月频指标，故单独在本页展示。
+
+Data source: China CDC monthly notifiable infectious disease surveillance report, via the
+[China Infectious Disease Forecast Hub](https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub)
+(`target-data/time-series.csv`, target `mo inc dengue cases`).
+Model forecasts for this target will appear here once teams begin submitting monthly dengue predictions.
+
+::: {#dengue-chart-container}
+:::
+
+```{=html}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script>
+(function () {
+  var TS_URL = "https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Hub/main/target-data/time-series.csv";
+  var container = document.getElementById("dengue-chart-container");
+  container.innerHTML = '<p style="color:#888">加载数据中 · Loading data…</p>';
+
+  function parseCSV(text) {
+    var lines = text.trim().split(/\r?\n/);
+    var header = lines[0].split(",");
+    var idxDate = header.indexOf("target_end_date");
+    var idxTarget = header.indexOf("target");
+    var idxObs = header.indexOf("observation");
+    var rows = [];
+    for (var i = 1; i < lines.length; i++) {
+      var cols = lines[i].split(",");
+      if (cols[idxTarget] === "mo inc dengue cases") {
+        rows.push({ date: cols[idxDate], value: Number(cols[idxObs]) });
+      }
+    }
+    rows.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    return rows;
+  }
+
+  fetch(TS_URL)
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then(function (text) {
+      var rows = parseCSV(text);
+      if (!rows.length) throw new Error("no dengue rows");
+
+      var latest = rows[rows.length - 1];
+      var peak = rows.reduce(function (m, r) { return r.value > m.value ? r : m; }, rows[0]);
+
+      container.innerHTML =
+        '<div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:.5rem">' +
+        '<div><div style="font-size:.8rem;color:#888">最新报告月份 · Latest month</div>' +
+        '<div style="font-size:1.3rem;font-weight:600">' + latest.date.slice(0, 7) + "：" + latest.value.toLocaleString() + " 例</div></div>" +
+        '<div><div style="font-size:.8rem;color:#888">历史峰值 · Peak</div>' +
+        '<div style="font-size:1.3rem;font-weight:600">' + peak.date.slice(0, 7) + "：" + peak.value.toLocaleString() + " 例</div></div>" +
+        "</div>" +
+        '<div id="dengue-plot" style="width:100%;height:420px"></div>';
+
+      Plotly.newPlot("dengue-plot", [{
+        type: "bar",
+        x: rows.map(function (r) { return r.date; }),
+        y: rows.map(function (r) { return r.value; }),
+        marker: { color: "#c0392b" },
+        hovertemplate: "%{x|%Y-%m}: %{y:,} 例<extra></extra>"
+      }], {
+        margin: { t: 20, r: 20, b: 50, l: 60 },
+        xaxis: { title: "月份 · Month", type: "date", dtick: "M3", tickformat: "%Y-%m" },
+        yaxis: { title: "报告病例数 · Reported cases", rangemode: "tozero" }
+      }, { responsive: true, displaylogo: false });
+    })
+    .catch(function (e) {
+      container.innerHTML = '<p style="color:#c0392b">数据加载失败（' + e.message + "），请直接查看 " +
+        '<a href="' + TS_URL.replace("raw.githubusercontent.com", "github.com").replace("/main/", "/blob/main/") + '">hub 数据文件</a>。</p>';
+    });
+})();
+</script>
+```
+
+::: {.callout-note}
+登革热预测任务（`mo inc dengue cases`，horizon -1 至 3 个月）已在 hub 中开放提交，
+reference_date 为每月 1 日。各模型团队开始提交月频登革热预测后，本页将叠加展示预测区间。
+:::
