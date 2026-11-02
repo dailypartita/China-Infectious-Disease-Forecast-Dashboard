@@ -1,5 +1,9 @@
 ---
-# Updated: 2026-10-30 — multi-disease: add target switcher (covid/flu) via task_id_text.
+# Updated: 2026-11-02 — hub target data migrated to hubverse v6 standard
+# (target_end_date/target/location/observation + hub-config/target-data.json),
+# so target_data_file_name is dropped: the build now uses the standard
+# hubdata.connect_target_data loader, which filters truth data per target.
+# (The legacy custom-file path does not filter and mixed all targets' rows.)
 # NOTE: "mo inc dengue cases" (rounds_idx 1, monthly) is intentionally not shown here —
 # predtimechart assumes evenly-spaced weekly target_end_date and this config is rounds_idx 0.
 rounds_idx: 0
@@ -17,7 +21,6 @@ initial_checked_models:
   - MUST-SEIRS
 
 disclaimer: 此dashboard展示中国新冠与流感阳性率的多模型预测结果，数据来源于中国疾控中心每周急性呼吸道传染病哨点监测；登革热月频预测的图表展示将于后续支持。
-target_data_file_name: time-series.csv
 task_id_text:
   location:
     CN: China
