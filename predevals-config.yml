@@ -1,6 +1,6 @@
-# Updated: 2026-10-30 — multi-disease: add "wk inc flu prop ili" target.
-# NOTE: "mo inc dengue cases" (rounds_idx 1, monthly) is intentionally deferred —
-# hubPredEvalsData compatibility with the monthly round is unverified; revisit later.
+# Updated: 2026-11-02 — hub tasks.json now single-round; task_id_text must list
+# dengue too (hubPredEvalsData validates coverage of all round-0 targets).
+# Dengue stays out of `targets` (no forecasts to score yet).
 # NOTE: relative_metrics/baseline intentionally disabled — MUST-SEIRS only submitted 2 rounds
 # (2025-11-17, 2026-01-19) and hubEvals hard-fails when the baseline is absent from an eval set.
 # Revisit once a model with full-season coverage is designated as baseline.
@@ -144,3 +144,4 @@ task_id_text:
   target:
     wk inc covid prop ili: SARS-CoV-2 ILI positivity
     wk inc flu prop ili: Influenza ILI positivity
+    mo inc dengue cases: Dengue cases (monthly)
