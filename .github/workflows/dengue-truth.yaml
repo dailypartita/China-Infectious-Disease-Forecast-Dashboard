@@ -1,0 +1,44 @@
+name: Dengue Truth Data
+
+# Upstream hub-dashboard-predtimechart only writes target (truth) JSONs at the
+# global max as_of (weekly), so monthly dengue truth files are never produced.
+# This workflow patches them onto ptc/data after every Rebuild Data run.
+on:
+  workflow_run:
+    workflows: [Rebuild Data]
+    types: [completed]
+  schedule:
+    - cron: '0 17 * * 5'  # Friday 17:00 UTC, after the 14:00 UTC rebuild
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ptc/data
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate dengue truth JSONs
+        run: python3 main-src/scripts/gen_dengue_truth.py .
+      - name: Commit and push if changed
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add targets/
+            git commit -m "data: patch dengue truth JSONs (monthly as_ofs)"
+            git push origin ptc/data
+          else
+            echo "no changes"
+          fi
