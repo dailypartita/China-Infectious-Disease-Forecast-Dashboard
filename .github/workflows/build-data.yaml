@@ -108,7 +108,7 @@ jobs:
       email: '${{ github.event.repository.owner.id }}+${{ github.event.repository.owner.login }}@users.noreply.github.com'
       # auto: rebuild all as-of snapshots only when Hub observations advanced past the newest
       # snapshot (predtimechart otherwise skips existing as-of files, leaving the truth line stale).
-      regenerate: ${{ inputs.regenerate == 'true' ? true:(inputs.regenerate == 'false' ? false:(needs.detect.outputs.regenerate == 'true')) }}
+      regenerate: ${{ inputs.regenerate == 'true' || (inputs.regenerate != 'false' && needs.detect.outputs.regenerate == 'true') }}
       build: ${{ inputs.data || 'both' }}
       publish: ${{ inputs.publish || github.event_name == 'schedule' || github.event_name == 'push' }}
     secrets:
