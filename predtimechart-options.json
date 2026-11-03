@@ -109,20 +109,22 @@
             "2026-09-28",
             "2026-10-05",
             "2026-10-12",
-            "2026-10-19"
+            "2026-10-19",
+            "2026-11-02"
         ],
         "wk inc flu prop ili": [
             "2022-12-05"
         ],
         "mo inc dengue cases": [
-            "2024-01-01"
+            "2022-12-05"
         ]
     },
-    "initial_as_of": "2026-10-19",
-    "current_date": "2026-10-19",
+    "initial_as_of": "2026-11-02",
+    "current_date": "2026-11-02",
     "models": [
         "CNCovidHub-ensemble",
         "GZNL-NextWave",
+        "LZU-Sentinel",
         "MUST-SEIRS",
         "XMU_CTModelling-FNN",
         "XMU_CTModelling-GRU",
@@ -139,11 +141,13 @@
         "XMU_CTModelling-XGBoost",
         "XMU_CTModelling-GRU",
         "XMU_CTModelling-TCN",
-        "MUST-SEIRS"
+        "MUST-SEIRS",
+        "LZU-Sentinel"
     ],
     "model_urls": {
         "XMU_CTModelling-FNN": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-FNN.yaml",
         "GZNL-NextWave": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-NextWave.yaml",
+        "LZU-Sentinel": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/LZU-Sentinel.yaml",
         "GZNL-VincentAvg": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-VincentAvg.yaml",
         "XMU_CTModelling-TCN": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-TCN.yaml",
         "XMU_CTModelling-GRU": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-GRU.yaml",
