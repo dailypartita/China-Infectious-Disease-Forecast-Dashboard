@@ -16,10 +16,14 @@ on:
   workflow_dispatch:
     inputs:
       regenerate:
-        description: "Force-rewrite existing forecast/target JSON (needed after Hub time-series updates an already-published as-of week)"
-        type: boolean
+        description: "Force-rewrite existing forecast/target JSON. auto = full rebuild only when Hub target-data has newer observations than the latest as-of snapshot (prevents the stale truth line; avoids needless commits from the dengue builder/patch ping-pong). Use true if Hub revised values for an already-published week."
+        type: choice
+        options:
+          - auto
+          - 'true'
+          - 'false'
         required: false
-        default: false
+        default: auto
       data:
         description: "Which forecast page data should be built?"
         type: choice
@@ -39,15 +43,72 @@ permissions:
   contents: write
 
 jobs:
+  detect:
+    name: "Detect Hub Data Updates"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      regenerate: ${{ steps.cmp.outputs.regenerate }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: cmp
+        name: "Compare hub truth vs latest as-of snapshots"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DASH: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          hub=$(yq eval '.hub' site-config.yml | sed -E 's+^https://github.com/++')
+          gh api -H "Accept: application/vnd.github.raw+json" "repos/$hub/contents/target-data/time-series.csv?ref=main" > ts.csv
+          gh api -H "Accept: application/vnd.github.raw+json" "repos/$DASH/contents/predtimechart-options.json?ref=ptc/data" > opts.json
+          python3 - <<'PY' || echo "regenerate=true" >> "$GITHUB_OUTPUT"
+          import csv, json, os, re, subprocess
+
+          def api(path, repo, accept=None):
+              cmd = ["gh", "api"]
+              if accept:
+                  cmd += ["-H", f"Accept: {accept}"]
+              cmd.append(path)
+              r = subprocess.run(cmd, capture_output=True, text=True)
+              return r.stdout if r.returncode == 0 else None
+
+          hub_max = {}
+          with open("ts.csv") as f:
+              for row in csv.DictReader(f):
+                  if row["target"].startswith("wk "):
+                      hub_max[row["target"]] = max(hub_max.get(row["target"], ""), row["target_end_date"])
+
+          dash = os.environ["DASH"]
+          opts = json.load(open("opts.json"))
+          tree = json.loads(api(f"repos/{dash}/git/trees/ptc/data?recursive=1", dash))
+          paths = [e["path"] for e in tree["tree"] if e["path"].startswith("targets/")]
+          changed = False
+          for target, hmax in hub_max.items():
+              slug = target.replace(" ", "-")
+              loc = opts["task_ids"][target]["location"][0]["value"]
+              pat = re.compile(rf"^targets/{re.escape(slug)}_{re.escape(loc)}_(\d{{4}}-\d{{2}}-\d{{2}})\.json$")
+              asofs = sorted({m.group(1) for p in paths if (m := pat.match(p))}, reverse=True)
+              body = api(f"repos/{dash}/contents/targets/{slug}_{loc}_{asofs[0]}.json?ref=ptc/data",
+                         dash, "application/vnd.github.raw+json") if asofs else None
+              if body is None or max(json.loads(body)["date"]) < hmax:
+                  changed = True
+                  break
+          print("regenerate=" + ("true" if changed else "false"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("regenerate=" + ("true" if changed else "false") + "\n")
+          PY
   site:
+    needs: [detect]
     uses: hubverse-org/hub-dashboard-control-room/.github/workflows/generate-data.yaml@main
     with:
       owner: '${{ github.event.repository.owner.login }}'
       name: '${{ github.event.repository.name }}'
       slug: '${{ github.event.repository.owner.login }}'
       email: '${{ github.event.repository.owner.id }}+${{ github.event.repository.owner.login }}@users.noreply.github.com'
-      # Weekly cron must regenerate: predtimechart skips existing as-of target files when false.
-      regenerate: ${{ github.event_name == 'schedule' || inputs.regenerate || false }}
+      # auto: rebuild all as-of snapshots only when Hub observations advanced past the newest
+      # snapshot (predtimechart otherwise skips existing as-of files, leaving the truth line stale).
+      regenerate: ${{ inputs.regenerate == 'true' ? true:(inputs.regenerate == 'false' ? false:(needs.detect.outputs.regenerate == 'true')) }}
       build: ${{ inputs.data || 'both' }}
       publish: ${{ inputs.publish || github.event_name == 'schedule' || github.event_name == 'push' }}
     secrets:

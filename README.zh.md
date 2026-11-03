@@ -48,11 +48,11 @@
 | CDC 哨点监测报告发布 | 每周（通常周三） |
 | 模型预测提交截止 | 每周三 23:59（北京时间） |
 | Hub 目标数据同步 | 周五 08:00 UTC / 周日 08:00 UTC（Hub `sync-target-data.yaml`） |
-| Dashboard 数据更新 | 周五 14:00 UTC / 周日 14:00 UTC（自动，`regenerate=true`；在 Hub 同步之后 + GitHub Actions 延迟缓冲） |
+| Dashboard 数据更新 | 周五 14:00 UTC / 周日 14:00 UTC（自动；`regenerate` 自动判定——仅当 Hub 观测推进时全量重建；在 Hub 同步之后 + GitHub Actions 延迟缓冲） |
 
 监测数据来源于中国疾控中心[《全国急性呼吸道传染病哨点监测情况》](https://www.chinacdc.cn/jksj/jksj04_14275/)，结构化提取工具：[cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard)。
 
-**手动刷新 Target（Hub `time-series.csv` 已更新、但图上灰线仍停在旧周）时：** 在 Actions → **Rebuild Data** 勾选 `regenerate=true`，`data=target`（或 `both`）。不勾选时 predtimechart 会跳过已存在的 as-of JSON，新观测周写不进去。
+**手动刷新 Target**：自 2026-11-03 起，Rebuild Data 会**自动检测观测滞后**——每次运行先比较 Hub `time-series.csv` 的最新观测周与 `ptc/data` 最新 as-of 快照，Hub 更新时自动以 `regenerate=true` 全量重建，新观测周不再需要人工干预。仅当 Hub **修订了已发布周的历史数值**（最新周没变）时，才需在 Actions → **Rebuild Data** 把 `regenerate` 选为 `true`、`data=target`（或 `both`）强制重写已有 as-of JSON（`false` 为强制跳过已存在文件；默认 `auto`）。
 
 ## 技术架构
 

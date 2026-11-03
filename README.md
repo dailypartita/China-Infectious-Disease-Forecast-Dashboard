@@ -46,11 +46,11 @@ See the [Evaluation page](https://dailypartita.github.io/China-Infectious-Diseas
 | CDC sentinel report | Weekly (typically Wednesday) |
 | Forecast submission deadline | Wednesday 23:59 Beijing time |
 | Hub target-data sync | Friday 08:00 UTC / Sunday 08:00 UTC (Hub `sync-target-data.yaml`) |
-| Dashboard data refresh | Friday 14:00 UTC / Sunday 14:00 UTC (automated, `regenerate=true`; after Hub sync + GitHub Actions delay buffer) |
+| Dashboard data refresh | Friday 14:00 UTC / Sunday 14:00 UTC (automated; `regenerate` auto-detected — full as-of rebuild only when Hub observations advance; after Hub sync + GitHub Actions delay buffer) |
 
 Target data from [China CDC sentinel surveillance](https://www.chinacdc.cn/jksj/jksj04_14275/). Extraction tool: [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard).
 
-**Manual target refresh** (Hub `time-series.csv` updated but the chart still ends on an older week): run Actions → **Rebuild Data** with `regenerate=true` and `data=target` (or `both`). Without regenerate, predtimechart skips existing as-of JSON files and new observation weeks will not appear.
+**Manual target refresh**: since 2026-11-03 Rebuild Data **auto-detects stale truth** — every run compares the latest observation week in Hub `time-series.csv` against the newest as-of snapshot on `ptc/data`, and rebuilds with `regenerate=true` automatically when the Hub is newer, so new observation weeks no longer need a manual run. Only if the Hub **revised values for an already-published week** (latest week unchanged) should you run Actions → **Rebuild Data** with `regenerate=true` and `data=target` (or `both`) to force-rewrite existing as-of JSON files (`false` forces the skip-existing behavior; default is `auto`).
 
 ## Architecture
 
