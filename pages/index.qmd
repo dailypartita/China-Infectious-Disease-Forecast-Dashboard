@@ -46,7 +46,7 @@ format:
 ::: {.lang-body .lang-en}
 ```{=html}
 <p class="hero-credits-label">Contributors</p>
-<p class="hero-credits">Forecasts provided by <a href="https://www.ctmodelling.cn/post/covidpredict/" target="_blank" rel="noopener noreferrer">Xiamen University CTModelling team</a>, <a href="https://rtao.must.edu.mo/id-1920/article/view/id-4791.html?locale=zh_MO" target="_blank" rel="noopener noreferrer">Macau University of Science and Technology (MUST)</a>, and <a href="https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub" target="_blank" rel="noopener noreferrer">Guangzhou National Laboratory (GZNL)</a>.</p>
+<p class="hero-credits">Forecasts provided by <a href="https://www.ctmodelling.cn/post/covidpredict/" target="_blank" rel="noopener noreferrer">Xiamen University CTModelling team</a>, <a href="https://rtao.must.edu.mo/id-1920/article/view/id-4791.html?locale=zh_MO" target="_blank" rel="noopener noreferrer">Macau University of Science and Technology (MUST)</a>, <a href="https://www.lzu.edu.cn/" target="_blank" rel="noopener noreferrer">Lanzhou University (LZU)</a>, and <a href="https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub" target="_blank" rel="noopener noreferrer">Guangzhou National Laboratory (GZNL)</a>.</p>
 <p class="hero-credits-label">Platform</p>
 <p class="hero-credits">Hubverse-CN integrated and maintained by the Bioinformatics and AI Research Department, Guangzhou National Laboratory.</p>
 ```
@@ -55,7 +55,7 @@ format:
 ::: {.lang-body .lang-zh .hidden}
 ```{=html}
 <p class="hero-credits-label">预测贡献</p>
-<p class="hero-credits">预测结果由<a href="https://www.ctmodelling.cn/post/covidpredict/" target="_blank" rel="noopener noreferrer">厦门大学 CTModelling team</a>、<a href="https://rtao.must.edu.mo/id-1920/article/view/id-4791.html?locale=zh_MO" target="_blank" rel="noopener noreferrer">澳门科技大学（MUST）</a>、<a href="https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub" target="_blank" rel="noopener noreferrer">广州国家实验室（GZNL）</a>提供。</p>
+<p class="hero-credits">预测结果由<a href="https://www.ctmodelling.cn/post/covidpredict/" target="_blank" rel="noopener noreferrer">厦门大学 CTModelling team</a>、<a href="https://rtao.must.edu.mo/id-1920/article/view/id-4791.html?locale=zh_MO" target="_blank" rel="noopener noreferrer">澳门科技大学（MUST）</a>、<a href="https://www.lzu.edu.cn/" target="_blank" rel="noopener noreferrer">兰州大学（LZU）</a>、<a href="https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub" target="_blank" rel="noopener noreferrer">广州国家实验室（GZNL）</a>提供。</p>
 <p class="hero-credits-label">平台维护</p>
 <p class="hero-credits">Hubverse-CN 由广州国家实验室-生物信息与人工智能研究部整合维护。</p>
 ```
