@@ -17,6 +17,7 @@ initial_checked_models:
   - XMU_CTModelling-GRU
   - XMU_CTModelling-TCN
   - MUST-SEIRS
+  - LZU-Sentinel
 
 disclaimer: 此dashboard展示中国新冠、流感阳性率及登革热病例数的多模型预测结果，数据来源于中国疾控中心；新冠与流感为周频目标，登革热为月频目标。
 task_id_text:
