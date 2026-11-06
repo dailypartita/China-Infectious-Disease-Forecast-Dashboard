@@ -145,16 +145,16 @@
         "LZU-Sentinel"
     ],
     "model_urls": {
-        "XMU_CTModelling-FNN": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-FNN.yaml",
-        "GZNL-NextWave": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-NextWave.yaml",
-        "LZU-Sentinel": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/LZU-Sentinel.yaml",
         "GZNL-VincentAvg": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-VincentAvg.yaml",
         "XMU_CTModelling-TCN": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-TCN.yaml",
-        "XMU_CTModelling-GRU": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-GRU.yaml",
-        "XMU_CTModelling-LSTM": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-LSTM.yaml",
-        "MUST-SEIRS": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/MUST-SEIRS.yaml",
+        "LZU-Sentinel": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/LZU-Sentinel.yaml",
         "CNCovidHub-ensemble": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/CNCovidHub-ensemble.yaml",
-        "XMU_CTModelling-XGBoost": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-XGBoost.yaml"
+        "MUST-SEIRS": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/MUST-SEIRS.yaml",
+        "XMU_CTModelling-FNN": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-FNN.yaml",
+        "GZNL-NextWave": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-NextWave.yaml",
+        "XMU_CTModelling-GRU": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-GRU.yaml",
+        "XMU_CTModelling-XGBoost": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-XGBoost.yaml",
+        "XMU_CTModelling-LSTM": "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/XMU_CTModelling-LSTM.yaml"
     },
     "disclaimer": "\u6b64dashboard\u5c55\u793a\u4e2d\u56fd\u65b0\u51a0\u3001\u6d41\u611f\u9633\u6027\u7387\u53ca\u767b\u9769\u70ed\u75c5\u4f8b\u6570\u7684\u591a\u6a21\u578b\u9884\u6d4b\u7ed3\u679c\uff0c\u6570\u636e\u6765\u6e90\u4e8e\u4e2d\u56fd\u75be\u63a7\u4e2d\u5fc3\uff1b\u65b0\u51a0\u4e0e\u6d41\u611f\u4e3a\u5468\u9891\u76ee\u6807\uff0c\u767b\u9769\u70ed\u4e3a\u6708\u9891\u76ee\u6807\u3002",
     "initial_xaxis_range": null
