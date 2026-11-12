@@ -25,7 +25,7 @@ format:
   <a href="forecast.html" class="btn btn-primary btn-lg" role="button">View Forecasts</a>
   <a href="eval.html" class="btn btn-outline-primary btn-lg" role="button">Model Evaluation</a>
 </div>
-<p class="hero-meta">Data from <a href="https://www.chinacdc.cn/jksj/jksj04_14275/">CDC sentinel surveillance</a> · <a href="https://hubverse.io/">Hubverse</a> standard</p>
+<p class="hero-meta">COVID from <a href="https://www.chinacdc.cn/jksj/jksj04_14275/">CDC sentinel surveillance</a> · flu from <a href="https://ivdc.chinacdc.cn/cnic/zyzx/lgzb/">CNIC</a> · dengue from CDC notifiable reports · <a href="https://hubverse.io/">Hubverse</a> standard</p>
 ```
 :::
 
@@ -36,7 +36,7 @@ format:
   <a href="forecast.html" class="btn btn-primary btn-lg" role="button">查看预测</a>
   <a href="eval.html" class="btn btn-outline-primary btn-lg" role="button">模型评估</a>
 </div>
-<p class="hero-meta">数据来源 <a href="https://www.chinacdc.cn/jksj/jksj04_14275/">CDC 哨点监测</a> · 遵循 <a href="https://hubverse.io/">Hubverse</a> 标准</p>
+<p class="hero-meta">新冠来自<a href="https://www.chinacdc.cn/jksj/jksj04_14275/">CDC 哨点监测</a> · 流感来自<a href="https://ivdc.chinacdc.cn/cnic/zyzx/lgzb/">国家流感中心（CNIC）</a> · 登革热来自疾控法定传染病报告 · 遵循 <a href="https://hubverse.io/">Hubverse</a> 标准</p>
 ```
 :::
 

@@ -6,7 +6,7 @@
 
 </div>
 
-Interactive forecasting and evaluation platform built on the [Hubverse](https://hubverse.io/) framework. Displays and compares multi-model probabilistic forecasts of three infectious-disease targets in China: weekly SARS-CoV-2 and influenza positivity rates among influenza-like illness (ILI) cases, and monthly reported dengue cases.
+Interactive forecasting and evaluation platform built on the [Hubverse](https://hubverse.io/) framework. Displays and compares multi-model probabilistic forecasts of three infectious-disease targets in China: the weekly SARS-CoV-2 positivity rate among influenza-like illness (ILI) cases from China CDC sentinel surveillance, the national laboratory positivity rate of ILI specimens from the China National Influenza Center (CNIC) weekly influenza surveillance report, and monthly reported dengue cases from national notifiable disease surveillance.
 
 **Live site:** [dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/)
 
@@ -16,13 +16,13 @@ Interactive forecasting and evaluation platform built on the [Hubverse](https://
 
 ### Forecasts
 
-- **Targets:** Weekly SARS-CoV-2 and influenza positivity rates among ILI cases from national sentinel surveillance (switchable on the forecast page); monthly reported dengue cases (chart support planned)
+- **Targets:** Weekly SARS-CoV-2 positivity among ILI cases from China CDC national sentinel surveillance, and the CNIC national laboratory positivity rate of ILI specimens (switchable on the forecast page); monthly reported dengue cases (chart support planned)
 - **Probabilistic output:** 23-quantile distributions with 95% prediction intervals
 - **Interactivity:** Reference date selection, model toggles, interval levels, keyboard navigation
 
 ### Evaluation
 
-- **Metrics:** WIS, AE median, 95% interval coverage (absolute scores) for both weekly ILI positivity targets
+- **Metrics:** WIS, AE median, 95% interval coverage (absolute scores) for the weekly SARS-CoV-2 and CNIC influenza positivity targets
 - **Views:** Table rankings and Plot heatmaps
 
 ### Data Access
@@ -43,12 +43,13 @@ See the [Evaluation page](https://dailypartita.github.io/China-Infectious-Diseas
 
 | Step | Schedule |
 |------|----------|
-| CDC sentinel report | Weekly (typically Wednesday) |
+| CDC sentinel report (COVID) | Weekly (typically Wednesday) |
+| CNIC influenza surveillance report | Weekly |
 | Forecast submission deadline | Wednesday 23:59 Beijing time |
 | Hub target-data sync | Friday 08:00 UTC / Sunday 08:00 UTC (Hub `sync-target-data.yaml`) |
 | Dashboard data refresh | Friday 14:00 UTC / Sunday 14:00 UTC (automated; `regenerate` auto-detected — full as-of rebuild only when Hub observations advance; after Hub sync + GitHub Actions delay buffer) |
 
-Target data from [China CDC sentinel surveillance](https://www.chinacdc.cn/jksj/jksj04_14275/). Extraction tool: [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard).
+Target data: COVID from [China CDC sentinel surveillance](https://www.chinacdc.cn/jksj/jksj04_14275/) (weekly outpatient ILI nucleic-acid positivity), influenza from the [China National Influenza Center weekly influenza surveillance report](https://ivdc.chinacdc.cn/cnic/zyzx/lgzb/) (national laboratory positivity of ILI specimens), and dengue from [China CDC notifiable disease reports](https://www.chinacdc.cn/jksj/jksj01/). Structured data source: [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard).
 
 **Manual target refresh**: since 2026-11-03 Rebuild Data **auto-detects stale truth** — every run compares the latest observation week in Hub `time-series.csv` against the newest as-of snapshot on `ptc/data`, and rebuilds with `regenerate=true` automatically when the Hub is newer, so new observation weeks no longer need a manual run. Only if the Hub **revised values for an already-published week** (latest week unchanged) should you run Actions → **Rebuild Data** with `regenerate=true` and `data=target` (or `both`) to force-rewrite existing as-of JSON files (`false` forces the skip-existing behavior; default is `auto`).
 

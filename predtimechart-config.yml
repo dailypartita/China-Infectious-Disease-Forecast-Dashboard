@@ -19,11 +19,11 @@ initial_checked_models:
   - MUST-SEIRS
   - LZU-Sentinel
 
-disclaimer: 此dashboard展示中国新冠、流感阳性率及登革热病例数的多模型预测结果，数据来源于中国疾控中心；新冠与流感为周频目标，登革热为月频目标。
+disclaimer: 此dashboard展示中国新冠、流感阳性率及登革热病例数的多模型预测结果。流感阳性率来自中国国家流感中心（CNIC）全国 ILI 标本实验室阳性率；新冠来自中国疾控中心哨点监测，登革热来自中国疾控中心法定传染病月报。新冠与流感为周频目标，登革热为月频目标。
 task_id_text:
   location:
     CN: China
   target:
     wk inc covid prop ili: SARS-CoV-2 ILI positivity
-    wk inc flu prop ili: Influenza ILI positivity
+    wk inc flu prop ili: CNIC ILI-specimen positivity
     mo inc dengue cases: Dengue cases (monthly)
