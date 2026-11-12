@@ -55,7 +55,9 @@
 
 **手动刷新 Target**：自 2026-11-03 起，Rebuild Data 会**自动检测观测滞后**——每次运行先比较 Hub `time-series.csv` 的最新观测周与 `ptc/data` 最新 as-of 快照，Hub 更新时自动以 `regenerate=true` 全量重建，新观测周不再需要人工干预。仅当 Hub **修订了已发布周的历史数值**（最新周没变）时，才需在 Actions → **Rebuild Data** 把 `regenerate` 选为 `true`、`data=target`（或 `both`）强制重写已有 as-of JSON（`false` 为强制跳过已存在文件；默认 `auto`）。
 
-Rebuild Data 本身不会改正 PredTimeChart 的 `available_as_ofs`。它成功结束后，**Patch dengue truth and as-of options**（`.github/workflows/dengue-truth.yaml`）会按 `ptc/data` 上真实的 target JSON 重写每个目标的 as-of 列表。该工作流也会在 Rebuild Data 成功时自动启动，并在周五 17:00 UTC 再跑一次。若要立刻生效，在 Actions 里手动运行 **Patch dengue truth and as-of options**（workflow_dispatch）。在这次运行完成之前，流感和登革热仍可能显示 `2009-09-07` 这个回退日期。
+Rebuild Data 本身不会改正 PredTimeChart 的 `available_as_ofs`，也不会补上模型选择器里缺的模型。它成功结束后，**Patch dengue truth and as-of options**（`.github/workflows/dengue-truth.yaml`）会按 `ptc/data` 上真实的 target JSON 重写每个目标的 as-of 列表，并把这些预测 JSON 里出现的模型 id 并入 `models`（Hub 上存在 `model-metadata/<model>.yaml` 时补上对应链接）。新模型不会写入 `initial_checked_models`，因此会出现在选择器里，但默认不勾选。该工作流也会在 Rebuild Data 成功时自动启动，并在周五 17:00 UTC 再跑一次。若要立刻生效，在 Actions 里手动运行 **Patch dengue truth and as-of options**（workflow_dispatch）。在这次运行完成之前，流感和登革热的 as-of 列表可能只剩预测参考日，既未指定为 designated、又未列入默认勾选的模型（例如只提交流感或登革热的模型）也不会出现在选择器里。
+
+若某个评估集里的预测与观测没有重叠日期，评分会跳过该集合，因此当仅有的流感预测都晚于 CNIC 最新周时，Rebuild Data 不再失败。与真值重叠的周仍会评分。在出现可评分的登革热观测月之前，登革热不会写入 `predevals-config.yml` 的 `targets`。
 
 ## 技术架构
 

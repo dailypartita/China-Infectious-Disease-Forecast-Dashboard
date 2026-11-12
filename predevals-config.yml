@@ -1,6 +1,10 @@
-# Updated: 2026-11-02 — hub tasks.json now single-round; task_id_text must list
+# Updated: 2026-11-12 — hub tasks.json now single-round; task_id_text must list
 # dengue too (hubPredEvalsData validates coverage of all round-0 targets).
-# Dengue stays out of `targets` (no forecasts to score yet).
+# Dengue stays out of `targets` (no scorable observed months yet; the 2026-11-01
+# dengue forecast horizons 0-3 start after the last observation, 2026-09).
+# Flu stays in `targets`. scripts/generate_eval_data_safe.R skips an eval set
+# whose forecasts do not overlap oracle output, so a round ahead of the latest
+# CNIC week does not fail Rebuild Data, and weeks that do overlap are scored.
 # NOTE: relative_metrics/baseline intentionally disabled — MUST-SEIRS only submitted 2 rounds
 # (2025-11-17, 2026-01-19) and hubEvals hard-fails when the baseline is absent from an eval set.
 # Revisit once a model with full-season coverage is designated as baseline.

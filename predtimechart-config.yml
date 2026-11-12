@@ -2,9 +2,12 @@
 # Updated: 2026-11-12 — hub tasks.json holds all three targets in one round, so
 # dengue appears in the target switcher. Upstream predtimechart writes truth
 # only at the global max as_of, and when a target has no forecast file it sets
-# available_as_ofs to min(reference_date) (2009-09-07). Dengue truth JSON and
-# the as-of lists are corrected on ptc/data by
-# .github/workflows/dengue-truth.yaml after Rebuild Data.
+# available_as_ofs to min(reference_date) (2009-09-07). With a forecast file it
+# keeps only that reference date. It also omits models that are neither
+# designated nor listed in initial_checked_models below. Dengue truth JSON,
+# the as-of lists, and those missing model names are corrected on ptc/data by
+# .github/workflows/dengue-truth.yaml after Rebuild Data. New models are not
+# added here, so they show up in the picker unchecked.
 rounds_idx: 0
 reference_date_col_name: reference_date
 target_date_col_name: target_end_date

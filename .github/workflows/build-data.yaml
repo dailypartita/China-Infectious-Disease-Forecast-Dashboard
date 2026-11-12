@@ -1,8 +1,10 @@
 name: "Rebuild Data"
 # PredTimeChart options written here are corrected afterwards by
-# .github/workflows/dengue-truth.yaml (dengue truth JSON plus available_as_ofs).
-# That follow-up is a separate workflow because this job is a reusable workflow
-# call and cannot append steps of its own.
+# .github/workflows/dengue-truth.yaml (dengue truth JSON, available_as_ofs,
+# and model names found only in flu or dengue forecasts).
+# Score generation is the local copy of the hubverse reusable workflow
+# (.github/workflows/generate-data.yaml): an eval set with forecasts but no
+# overlapping observations is skipped instead of failing the run.
 on:
   schedule:
     # Friday 14:00 UTC ≈ Friday 22:00 Asia/Shanghai — well after Hub sync-target-data (Fri 08:00 UTC),
@@ -104,7 +106,7 @@ jobs:
           PY
   site:
     needs: [detect]
-    uses: hubverse-org/hub-dashboard-control-room/.github/workflows/generate-data.yaml@main
+    uses: ./.github/workflows/generate-data.yaml
     with:
       owner: '${{ github.event.repository.owner.login }}'
       name: '${{ github.event.repository.name }}'

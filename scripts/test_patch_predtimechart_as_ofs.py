@@ -223,6 +223,132 @@ class PatchAsOfTests(unittest.TestCase):
         self.assertEqual(second.available_as_ofs[flu], ["2026-11-02"])
         self.assertEqual(second.available_as_ofs[dengue], ["2009-09-07", "2026-11-02"])
 
+    def test_flu_forecast_keeps_earlier_target_snapshot(self):
+        # Rebuild Data lists only the forecast reference date. The previous
+        # current snapshot is still a real CNIC file and must stay selectable.
+        hub = {"2009-09-07": 31.6, "2026-10-26": 12.4}
+        flu = "wk inc flu prop ili"
+        options = _options(**{flu: ["2026-11-09"]})
+        options["current_date"] = "2026-11-09"
+        options["initial_as_of"] = "2026-11-09"
+        self._save_options(options)
+        series = _series(sorted(hub), [hub[d] for d in sorted(hub)])
+        _write(self.targets / "wk-inc-flu-prop-ili_CN_2026-11-02.json", series)
+        _write(self.targets / "wk-inc-flu-prop-ili_CN_2026-11-09.json", series)
+        (self.forecasts / "wk-inc-flu-prop-ili_CN_2026-11-09.json").write_text(
+            '{"GZNL-FluLGBMCQR": {}}\n'
+        )
+
+        result = patch.patch_ptc_data(self.root, {flu: hub}, metadata_exists=lambda model: False)
+
+        self.assertEqual(
+            result.available_as_ofs[flu],
+            ["2026-11-02", "2026-11-09"],
+        )
+
+    def test_dengue_forecast_keeps_history_through_current_date(self):
+        target = "mo inc dengue cases"
+        options = _options(**{target: ["2026-11-01"]})
+        options["current_date"] = "2026-11-09"
+        self._save_options(options)
+        for date in ("2009-09-07", "2026-11-01", "2026-11-02", "2027-01-04"):
+            _write(
+                self.targets / f"mo-inc-dengue-cases_CN_{date}.json",
+                _series(["2004-01-01"], [1]),
+            )
+        (self.forecasts / "mo-inc-dengue-cases_CN_2026-11-01.json").write_text(
+            '{"GZNL-DengueLGBMCQR": {}}\n'
+        )
+
+        result = patch.patch_ptc_data(self.root, {}, metadata_exists=lambda model: False)
+
+        self.assertEqual(
+            result.available_as_ofs[target],
+            ["2009-09-07", "2026-11-01", "2026-11-02"],
+        )
+        self.assertTrue((self.targets / "mo-inc-dengue-cases_CN_2027-01-04.json").exists())
+
+    def test_models_union_keeps_existing_and_skips_hosp_templates(self):
+        flu = "wk inc flu prop ili"
+        dengue = "mo inc dengue cases"
+        covid = "wk inc covid prop ili"
+        options = _options(**{flu: ["2026-11-09"], dengue: ["2026-11-01"], covid: ["2026-11-02"]})
+        options["current_date"] = "2026-11-09"
+        options["models"] = ["GZNL-NextWave", "GZNL-VincentAvg"]
+        options["initial_checked_models"] = ["GZNL-NextWave"]
+        options["model_urls"] = {
+            "GZNL-NextWave": "https://example.test/GZNL-NextWave.yaml",
+        }
+        self._save_options(options)
+        hub = {"2026-10-26": 12.4}
+        series = _series(["2026-10-26"], [12.4])
+        _write(self.targets / "wk-inc-flu-prop-ili_CN_2026-11-09.json", series)
+        _write(self.targets / "wk-inc-covid-prop-ili_CN_2026-11-02.json", _series(["2026-10-26"], [1.0]))
+        _write(
+            self.targets / "mo-inc-dengue-cases_CN_2026-11-01.json",
+            _series(["2004-01-01"], [3]),
+        )
+        (self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-02.json").write_text(
+            '{"GZNL-NextWave": {}, "NoMetaModel": {}}\n'
+        )
+        (self.forecasts / "wk-inc-flu-prop-ili_CN_2026-11-09.json").write_text(
+            '{"GZNL-FluLGBMCQR": {}}\n'
+        )
+        (self.forecasts / "mo-inc-dengue-cases_CN_2026-11-01.json").write_text(
+            '{"GZNL-DengueLGBMCQR": {}}\n'
+        )
+        hosp = self.forecasts / "wk-inc-flu-hosp_US_2025-05-31.json"
+        hosp.write_text('{"FluSight-baseline": {}}\n')
+        checked = ["GZNL-DengueLGBMCQR", "GZNL-FluLGBMCQR", "GZNL-NextWave"]
+
+        result = patch.patch_ptc_data(
+            self.root,
+            {flu: hub, covid: {"2026-10-26": 1.0}},
+            metadata_exists=lambda model: model in checked,
+        )
+
+        self.assertEqual(
+            result.models,
+            [
+                "GZNL-NextWave",
+                "GZNL-VincentAvg",
+                "GZNL-DengueLGBMCQR",
+                "GZNL-FluLGBMCQR",
+                "NoMetaModel",
+            ],
+        )
+        self.assertEqual(
+            result.models_added,
+            ["GZNL-DengueLGBMCQR", "GZNL-FluLGBMCQR", "NoMetaModel"],
+        )
+        saved = json.loads((self.root / "predtimechart-options.json").read_text())
+        self.assertEqual(saved["initial_checked_models"], ["GZNL-NextWave"])
+        self.assertEqual(
+            saved["model_urls"]["GZNL-NextWave"],
+            "https://example.test/GZNL-NextWave.yaml",
+        )
+        self.assertEqual(
+            saved["model_urls"]["GZNL-FluLGBMCQR"],
+            "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-FluLGBMCQR.yaml",
+        )
+        self.assertEqual(
+            saved["model_urls"]["GZNL-DengueLGBMCQR"],
+            "https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/blob/main/model-metadata/GZNL-DengueLGBMCQR.yaml",
+        )
+        self.assertNotIn("NoMetaModel", saved["model_urls"])
+        self.assertNotIn("FluSight-baseline", saved["models"])
+        self.assertTrue(hosp.exists())
+
+        options_bytes = (self.root / "predtimechart-options.json").read_bytes()
+        second = patch.patch_ptc_data(
+            self.root,
+            {flu: hub, covid: {"2026-10-26": 1.0}},
+            metadata_exists=lambda model: model in checked,
+        )
+        self.assertFalse(second.options_changed)
+        self.assertEqual(second.models_added, [])
+        self.assertEqual((self.root / "predtimechart-options.json").read_bytes(), options_bytes)
+
 
 if __name__ == "__main__":
     unittest.main()
