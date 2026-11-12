@@ -131,10 +131,10 @@ All model output files in this hub are stored in CSV format and follow the [Hubv
 The target data (`target-data/time-series.csv`) is a long table with a `target` column mixing three targets:
 
 - `wk inc covid prop ili` — weekly SARS-CoV-2 positivity rate among department influenza-like illness (ILI) cases
-- `wk inc flu prop ili` — weekly influenza virus positivity rate among ILI cases
+- `wk inc flu prop ili` — weekly national laboratory positivity rate of ILI specimens (China National Influenza Center, CNIC)
 - `mo inc dengue cases` — monthly reported dengue cases (monthly frequency; `date` is the first day of each month)
 
-The two ILI positivity targets come from China CDC's weekly National Sentinel Surveillance of Acute Respiratory Infectious Diseases; dengue cases come from China CDC's monthly notifiable infectious disease surveillance report.
+SARS-CoV-2 positivity comes from China CDC's weekly [National Sentinel Surveillance of Acute Respiratory Infectious Diseases](https://www.chinacdc.cn/jksj/jksj04_14275/). Influenza positivity is the national laboratory positivity rate of ILI specimens tested in the national influenza surveillance network, as published in the [China National Influenza Center (CNIC) weekly influenza surveillance report](https://ivdc.chinacdc.cn/cnic/zyzx/lgzb/); values are percentage points for the national series. Dengue cases come from China CDC's [monthly notifiable infectious disease surveillance report](https://www.chinacdc.cn/jksj/jksj01/).
 
 ### Model Output Data
 

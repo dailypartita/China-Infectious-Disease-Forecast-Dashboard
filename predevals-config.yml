@@ -143,5 +143,5 @@ task_id_text:
     CN: China
   target:
     wk inc covid prop ili: SARS-CoV-2 ILI positivity
-    wk inc flu prop ili: Influenza ILI positivity
+    wk inc flu prop ili: CNIC ILI-specimen positivity
     mo inc dengue cases: Dengue cases (monthly)
