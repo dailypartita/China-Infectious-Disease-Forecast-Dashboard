@@ -1,8 +1,17 @@
-name: Dengue Truth Data
+name: Patch dengue truth and as-of options
 
 # Upstream hub-dashboard-predtimechart only writes target (truth) JSONs at the
-# global max as_of (weekly), so monthly dengue truth files are never produced.
-# This workflow patches them onto ptc/data after every Rebuild Data run.
+# global max as_of (weekly), so dengue truth files are never produced for other
+# reference dates. It also sets available_as_ofs from forecast reference dates,
+# and when a target has no forecast file falls back to min(reference_date)
+# (2009-09-07). Flu and dengue then load a missing or ancient snapshot for
+# "As of data" while "Current data" uses current_date.
+#
+# This workflow runs after every successful Rebuild Data: it writes dengue
+# truth JSON, drops flu snapshots that disagree with the current Hub CNIC
+# series, backfills target JSON for forecast weeks that would otherwise 404,
+# and rewrites available_as_ofs to dates that have a real target file.
+# workflow_dispatch runs the same patch without waiting for Rebuild Data.
 on:
   workflow_run:
     workflows: [Rebuild Data]
@@ -35,15 +44,17 @@ jobs:
           python-version: '3.12'
       - name: Generate dengue truth JSONs
         run: python3 main-src/scripts/gen_dengue_truth.py ptc-data
+      - name: Patch available_as_ofs from target snapshots
+        run: python3 main-src/scripts/patch_predtimechart_as_ofs.py ptc-data
       - name: Commit and push if changed
         working-directory: ptc-data
         run: |
-          git add -- targets/
-          if [[ -z "$(git diff --cached --name-only -- targets/)" ]]; then
+          git add -- targets/ predtimechart-options.json
+          if [[ -z "$(git diff --cached --name-only)" ]]; then
             echo "no changes"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "data: patch dengue truth JSONs (monthly as_ofs)"
+            git commit -m "data: patch dengue truth and predtimechart as-of dates"
             git push origin ptc/data
           fi

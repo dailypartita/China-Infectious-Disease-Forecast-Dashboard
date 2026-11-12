@@ -53,6 +53,8 @@ Target data: COVID from [China CDC sentinel surveillance](https://www.chinacdc.c
 
 **Manual target refresh**: since 2026-11-03 Rebuild Data **auto-detects stale truth** — every run compares the latest observation week in Hub `time-series.csv` against the newest as-of snapshot on `ptc/data`, and rebuilds with `regenerate=true` automatically when the Hub is newer, so new observation weeks no longer need a manual run. Only if the Hub **revised values for an already-published week** (latest week unchanged) should you run Actions → **Rebuild Data** with `regenerate=true` and `data=target` (or `both`) to force-rewrite existing as-of JSON files (`false` forces the skip-existing behavior; default is `auto`).
 
+Rebuild Data does not itself fix PredTimeChart `available_as_ofs`. After it succeeds, **Patch dengue truth and as-of options** (`.github/workflows/dengue-truth.yaml`) rewrites each target's as-of list from the target JSON files on `ptc/data`. That workflow also starts on its own when Rebuild Data completes, and again on Friday 17:00 UTC. To apply it immediately, run Actions → **Patch dengue truth and as-of options** (workflow_dispatch). Until that run finishes, flu and dengue can still show the `2009-09-07` fallback.
+
 ## Architecture
 
 | Component | Description |

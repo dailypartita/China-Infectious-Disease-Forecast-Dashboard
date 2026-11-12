@@ -1,4 +1,8 @@
 name: "Rebuild Data"
+# PredTimeChart options written here are corrected afterwards by
+# .github/workflows/dengue-truth.yaml (dengue truth JSON plus available_as_ofs).
+# That follow-up is a separate workflow because this job is a reusable workflow
+# call and cannot append steps of its own.
 on:
   schedule:
     # Friday 14:00 UTC ≈ Friday 22:00 Asia/Shanghai — well after Hub sync-target-data (Fri 08:00 UTC),
