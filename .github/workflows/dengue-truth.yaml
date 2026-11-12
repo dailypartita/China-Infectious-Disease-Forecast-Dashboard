@@ -5,12 +5,17 @@ name: Patch dengue truth and as-of options
 # reference dates. It also sets available_as_ofs from forecast reference dates,
 # and when a target has no forecast file falls back to min(reference_date)
 # (2009-09-07). Flu and dengue then load a missing or ancient snapshot for
-# "As of data" while "Current data" uses current_date.
+# "As of data" while "Current data" uses current_date. A forecast file shrinks
+# that list to the forecast reference date and drops the older truth snapshots.
+# Models are included only when designated or listed in initial_checked_models,
+# so a flu-only or dengue-only model is missing from the picker.
 #
 # This workflow runs after every successful Rebuild Data: it writes dengue
 # truth JSON, drops flu snapshots that disagree with the current Hub CNIC
 # series, backfills target JSON for forecast weeks that would otherwise 404,
-# and rewrites available_as_ofs to dates that have a real target file.
+# rewrites available_as_ofs to dates that have a real target file, and unions
+# model ids from those forecast JSON files into models (with Hub metadata
+# links when the yaml exists). initial_checked_models is left unchanged.
 # workflow_dispatch runs the same patch without waiting for Rebuild Data.
 on:
   workflow_run:
@@ -44,7 +49,7 @@ jobs:
           python-version: '3.12'
       - name: Generate dengue truth JSONs
         run: python3 main-src/scripts/gen_dengue_truth.py ptc-data
-      - name: Patch available_as_ofs from target snapshots
+      - name: Patch as-of options and model list
         run: python3 main-src/scripts/patch_predtimechart_as_ofs.py ptc-data
       - name: Commit and push if changed
         working-directory: ptc-data
@@ -55,6 +60,6 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "data: patch dengue truth and predtimechart as-of dates"
+            git commit -m "data: patch dengue truth, as-of dates, and forecast model list"
             git push origin ptc/data
           fi

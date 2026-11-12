@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
-"""Rewrite predtimechart available_as_ofs from target snapshots on ptc/data.
+"""Rewrite predtimechart available_as_ofs and the model list on ptc/data.
 
 Upstream ``ptc_generate_json_files`` sets ``available_as_ofs`` from forecast
 reference dates. When a target has no forecast file, it falls back to
 ``min(reference_date)`` (currently 2009-09-07). Flu and dengue then point the
 as-of picker at a date that is either missing (flu 404) or an ancient vintage,
-so "As of data" and "Current data" load different files.
+so "As of data" and "Current data" load different files. Once those targets
+do have a forecast file, the same generator keeps only that file's reference
+date and drops the rest of the truth snapshots.
+
+It also puts a model in ``models`` only when metadata says ``designated_model``
+or the id is in ``initial_checked_models``. ``model_urls`` are omitted for
+everyone else, because a url whose model is not in ``models`` fails
+predtimechart validation. A flu-only or dengue-only model that is not
+designated and not checked by default (GZNL-FluLGBMCQR, GZNL-DengueLGBMCQR)
+is in the forecast JSON and missing from the picker.
 
 This Hub does not revise historical observations, so the latest as-of snapshot
 and Current data are the same series. After dengue truth files are written,
@@ -14,16 +23,18 @@ this script:
 - drops flu target JSON whose values disagree with the current Hub CNIC series
   (the stale 2026-10-19 CDC sentinel file) and rewrites the ``current_date``
   flu snapshot from Hub truth when that file is missing or incomplete
-- writes a Hub snapshot for any forecast as-of that does not yet have a target
-  JSON (COVID weeks upstream never materialized), truncated to
-  ``target_end_date <= as_of``
+- writes a Hub snapshot for any forecast as-of the generator already published
+  that does not yet have a target JSON (COVID weeks upstream never
+  materialized), truncated to ``target_end_date <= as_of``
 - sets each target's ``available_as_ofs`` to dates that have a real target
-  JSON and are not after ``current_date``
-
-Forecast weeks already chosen by the upstream generator are kept, so COVID's
-picker does not lose weeks that have forecast JSON. Targets with no forecast
-files (flu, dengue) are listed only from the target files on disk. Leftover
-``wk-inc-flu-hosp_*`` template files are never treated as ``wk inc flu prop ili``.
+  JSON and are not after ``current_date``. Forecast weeks the generator
+  published are kept. Forecast JSON it did not publish (retired or test
+  models) is not added. Leftover ``wk-inc-flu-hosp_*`` template files are
+  never treated as ``wk inc flu prop ili``.
+- unions model ids found in those forecast JSON files into ``models``, and
+  adds ``model_urls`` for ids whose ``model-metadata/<model>.yaml`` exists
+  on the Hub. Existing models stay in place. ``initial_checked_models`` is
+  not changed, so a newly added model shows up unchecked.
 
 Runs against a local checkout of the ptc/data branch. Idempotent.
 """
@@ -35,6 +46,7 @@ import itertools
 import json
 import re
 import sys
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -44,12 +56,15 @@ TS_URL = f"https://raw.githubusercontent.com/{HUB}/main/target-data/time-series.
 FLU_TARGET = "wk inc flu prop ili"
 DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 VALUE_TOLERANCE = 1e-6
 
 
 @dataclass
 class PatchResult:
     available_as_ofs: dict[str, list[str]] = field(default_factory=dict)
+    models: list[str] = field(default_factory=list)
+    models_added: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     wrote: list[str] = field(default_factory=list)
     options_changed: bool = False
@@ -246,49 +261,106 @@ def reconcile_target(
 
     forecast_sets = [set(dates_for_prefix(forecasts_dir, prefix)) for prefix in prefixes]
     forecast_dates = set.intersection(*forecast_sets) if forecast_sets else set()
-    # Only dates the generator already published. Leftover forecast JSON for
-    # retired or test models stays on disk but is not added to the picker.
+    # Dates the generator published that also have forecast JSON. Those weeks
+    # are kept even when the target file has to be backfilled (COVID).
     forecast_backed = [date for date in existing if date in forecast_dates]
 
-    if forecast_backed:
-        kept: list[str] = []
-        for date in forecast_backed:
-            ok = True
-            for prefix in prefixes:
-                if not _ensure_file(
-                    targets_dir / f"{prefix}{date}.json",
-                    hub,
-                    date,
-                    full=False,
-                    result=result,
-                ):
-                    ok = False
-            if ok:
-                kept.append(date)
-        selected = set(kept)
-        if current_date:
-            current_ok = all(
-                _acceptable(targets_dir / f"{prefix}{current_date}.json", hub)
-                for prefix in prefixes
-            )
-            if current_ok:
-                selected.add(current_date)
-    else:
-        per_prefix: list[set[str]] = []
+    kept_forecast: list[str] = []
+    for date in forecast_backed:
+        ok = True
         for prefix in prefixes:
-            good = set()
-            for date, path in dates_for_prefix(targets_dir, prefix).items():
-                if _acceptable(path, hub if is_flu else None):
-                    good.add(date)
-            per_prefix.append(good)
-        selected = set.intersection(*per_prefix) if per_prefix else set()
+            if not _ensure_file(
+                targets_dir / f"{prefix}{date}.json",
+                hub,
+                date,
+                full=False,
+                result=result,
+            ):
+                ok = False
+        if ok:
+            kept_forecast.append(date)
+
+    # Dengue snapshots come from gen_dengue_truth and are not re-checked
+    # against Hub truth. Flu and COVID snapshots must match Hub values when
+    # that series was supplied, so a stale CDC flu file cannot re-enter.
+    scan_hub = None if target.startswith("mo ") else hub
+    per_prefix: list[set[str]] = []
+    for prefix in prefixes:
+        good: set[str] = set()
+        for date, path in dates_for_prefix(targets_dir, prefix).items():
+            if _acceptable(path, scan_hub):
+                good.add(date)
+        per_prefix.append(good)
+    from_targets = set.intersection(*per_prefix) if per_prefix else set()
+
+    # Forecast JSON the generator did not publish (retired or test models)
+    # stays on disk but is not added, even if a target snapshot exists.
+    retired = forecast_dates - set(existing)
+    selected = (from_targets - retired) | set(kept_forecast)
 
     if current_date:
         selected = {date for date in selected if date <= current_date}
     return sorted(selected)
 
 
-def patch_ptc_data(ptc_data: Path, hub_series: dict[str, dict[str, float]]) -> PatchResult:
+def metadata_url(model: str) -> str:
+    return f"https://github.com/{HUB}/blob/main/model-metadata/{model}.yaml"
+
+
+def remote_metadata_exists(model: str) -> bool:
+    """True when Hub model-metadata/<model>.yaml exists. 404 is absence."""
+    url = f"https://raw.githubusercontent.com/{HUB}/main/model-metadata/{model}.yaml"
+    try:
+        with urllib.request.urlopen(url, timeout=60) as resp:
+            return resp.status == 200
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        raise
+
+
+def forecast_model_names(forecasts_dir: Path, options: dict) -> list[str]:
+    """Model ids in forecast JSON for this hub's targets, in sorted order.
+
+    ``wk-inc-flu-hosp_*`` template files do not match a configured target
+    prefix, so FluSight model ids in those files are ignored.
+    """
+    prefixes: list[str] = []
+    for target, task_ids in options.get("task_ids", {}).items():
+        prefixes.extend(file_prefixes(target, task_ids or {}))
+    names: set[str] = set()
+    if not forecasts_dir.is_dir() or not prefixes:
+        return []
+    for prefix in prefixes:
+        for path in forecasts_dir.glob(prefix + "*.json"):
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError, UnicodeError):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            for key in payload:
+                if isinstance(key, str) and MODEL_ID.fullmatch(key):
+                    names.add(key)
+    return sorted(names)
+
+
+def union_models(existing: list[str], discovered: list[str]) -> list[str]:
+    """Keep ``existing`` order and append newly discovered ids, sorted."""
+    seen = set(existing)
+    merged = list(existing)
+    for name in discovered:
+        if name not in seen:
+            merged.append(name)
+            seen.add(name)
+    return merged
+
+
+def patch_ptc_data(
+    ptc_data: Path,
+    hub_series: dict[str, dict[str, float]],
+    metadata_exists=None,
+) -> PatchResult:
     options_path = ptc_data / "predtimechart-options.json"
     if not options_path.is_file():
         raise FileNotFoundError(f"missing {options_path}")
@@ -322,10 +394,40 @@ def patch_ptc_data(ptc_data: Path, hub_series: dict[str, dict[str, float]]) -> P
         if not new_as_ofs[target]:
             raise RuntimeError(f"no target snapshots left for {target!r}; refusing to write an empty as-of list")
 
+    if metadata_exists is None:
+        metadata_exists = remote_metadata_exists
+    existing_models = list(options.get("models") or [])
+    discovered = forecast_model_names(forecasts_dir, options)
+    merged_models = union_models(existing_models, discovered)
+    existing_urls = options.get("model_urls")
+    urls = dict(existing_urls or {})
+    for model in merged_models:
+        if model in urls:
+            continue
+        if metadata_exists(model):
+            urls[model] = metadata_url(model)
+
+    if "models" in options:
+        models_changed = merged_models != existing_models
+    else:
+        models_changed = bool(merged_models)
+    if existing_urls is None:
+        urls_changed = bool(urls)
+    else:
+        urls_changed = urls != existing_urls
+
     result.available_as_ofs = new_as_ofs
-    result.options_changed = new_as_ofs != options.get("available_as_ofs")
+    result.models = merged_models
+    result.models_added = [model for model in merged_models if model not in existing_models]
+    result.options_changed = (
+        new_as_ofs != options.get("available_as_ofs") or models_changed or urls_changed
+    )
     if result.options_changed:
         options["available_as_ofs"] = new_as_ofs
+        if "models" in options or merged_models:
+            options["models"] = merged_models
+        if existing_urls is not None or urls:
+            options["model_urls"] = urls
         # Match upstream json.dump(..., indent=4): no trailing newline after "}".
         options_path.write_text(json.dumps(options, indent=4))
     return result
@@ -346,6 +448,8 @@ def main(argv: list[str] | None = None) -> None:
         print("removed: " + ", ".join(result.removed))
     if result.wrote:
         print(f"wrote {len(result.wrote)} target file(s)")
+    if result.models_added:
+        print("models added: " + ", ".join(result.models_added))
     if not result.options_changed and not result.removed and not result.wrote:
         print("no changes")
 
