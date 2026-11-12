@@ -55,6 +55,8 @@
 
 **手动刷新 Target**：自 2026-11-03 起，Rebuild Data 会**自动检测观测滞后**——每次运行先比较 Hub `time-series.csv` 的最新观测周与 `ptc/data` 最新 as-of 快照，Hub 更新时自动以 `regenerate=true` 全量重建，新观测周不再需要人工干预。仅当 Hub **修订了已发布周的历史数值**（最新周没变）时，才需在 Actions → **Rebuild Data** 把 `regenerate` 选为 `true`、`data=target`（或 `both`）强制重写已有 as-of JSON（`false` 为强制跳过已存在文件；默认 `auto`）。
 
+Rebuild Data 本身不会改正 PredTimeChart 的 `available_as_ofs`。它成功结束后，**Patch dengue truth and as-of options**（`.github/workflows/dengue-truth.yaml`）会按 `ptc/data` 上真实的 target JSON 重写每个目标的 as-of 列表。该工作流也会在 Rebuild Data 成功时自动启动，并在周五 17:00 UTC 再跑一次。若要立刻生效，在 Actions 里手动运行 **Patch dengue truth and as-of options**（workflow_dispatch）。在这次运行完成之前，流感和登革热仍可能显示 `2009-09-07` 这个回退日期。
+
 ## 技术架构
 
 | 组件 | 说明 |
