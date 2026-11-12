@@ -31,10 +31,17 @@ this script:
   published are kept. Forecast JSON it did not publish (retired or test
   models) is not added. Leftover ``wk-inc-flu-hosp_*`` template files are
   never treated as ``wk inc flu prop ili``.
-- unions model ids found in those forecast JSON files into ``models``, and
-  adds ``model_urls`` for ids whose ``model-metadata/<model>.yaml`` exists
-  on the Hub. Existing models stay in place. ``initial_checked_models`` is
-  not changed, so a newly added model shows up unchecked.
+- keeps a model in ``models`` only when ``model-metadata/<model>.yaml``
+  still exists on the Hub. Ids found only in historical forecast JSON
+  (deleted test models) are dropped. ``model_urls`` are added only for
+  models that have that metadata. ``initial_checked_models`` is not
+  changed, so a newly added model shows up unchecked.
+- writes ``models-by-target.json`` beside the options file. predtimechart
+  v3's options schema sets ``additionalProperties`` to false, so this
+  mapping cannot live inside ``predtimechart-options.json``. Each target
+  lists Hub-registered models that appear in that target's forecast JSON.
+  The forecast page uses the file to hide models that only forecast a
+  different pathogen. Historical forecast JSON is left on disk.
 
 Runs against a local checkout of the ptc/data branch. Idempotent.
 """
@@ -58,6 +65,7 @@ DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 VALUE_TOLERANCE = 1e-6
+MODELS_BY_TARGET = "models-by-target.json"
 
 
 @dataclass
@@ -65,9 +73,12 @@ class PatchResult:
     available_as_ofs: dict[str, list[str]] = field(default_factory=dict)
     models: list[str] = field(default_factory=list)
     models_added: list[str] = field(default_factory=list)
+    models_removed: list[str] = field(default_factory=list)
+    models_by_target: dict[str, list[str]] = field(default_factory=dict)
     removed: list[str] = field(default_factory=list)
     wrote: list[str] = field(default_factory=list)
     options_changed: bool = False
+    models_by_target_changed: bool = False
 
 
 def replace_chars(value: str) -> str:
@@ -319,29 +330,45 @@ def remote_metadata_exists(model: str) -> bool:
         raise
 
 
-def forecast_model_names(forecasts_dir: Path, options: dict) -> list[str]:
-    """Model ids in forecast JSON for this hub's targets, in sorted order.
+def _model_ids(payload: object) -> set[str]:
+    if not isinstance(payload, dict):
+        return set()
+    return {key for key in payload if isinstance(key, str) and MODEL_ID.fullmatch(key)}
+
+
+def forecast_model_names_by_target(
+    forecasts_dir: Path,
+    options: dict,
+    targets: list[str],
+) -> dict[str, set[str]]:
+    """Model ids in each target's forecast JSON.
 
     ``wk-inc-flu-hosp_*`` template files do not match a configured target
-    prefix, so FluSight model ids in those files are ignored.
+    prefix, so FluSight model ids in those files are ignored. The JSON
+    files themselves are not deleted.
     """
-    prefixes: list[str] = []
-    for target, task_ids in options.get("task_ids", {}).items():
-        prefixes.extend(file_prefixes(target, task_ids or {}))
+    task_ids_all = options.get("task_ids", {})
+    found: dict[str, set[str]] = {}
+    for target in targets:
+        names: set[str] = set()
+        if forecasts_dir.is_dir():
+            for prefix in file_prefixes(target, task_ids_all.get(target) or {}):
+                for path in forecasts_dir.glob(prefix + "*.json"):
+                    try:
+                        payload = json.loads(path.read_text())
+                    except (OSError, json.JSONDecodeError, UnicodeError):
+                        continue
+                    names.update(_model_ids(payload))
+        found[target] = names
+    return found
+
+
+def forecast_model_names(forecasts_dir: Path, options: dict) -> list[str]:
+    """Model ids in forecast JSON for this hub's targets, in sorted order."""
+    targets = list(options.get("task_ids", {}))
     names: set[str] = set()
-    if not forecasts_dir.is_dir() or not prefixes:
-        return []
-    for prefix in prefixes:
-        for path in forecasts_dir.glob(prefix + "*.json"):
-            try:
-                payload = json.loads(path.read_text())
-            except (OSError, json.JSONDecodeError, UnicodeError):
-                continue
-            if not isinstance(payload, dict):
-                continue
-            for key in payload:
-                if isinstance(key, str) and MODEL_ID.fullmatch(key):
-                    names.add(key)
+    for group in forecast_model_names_by_target(forecasts_dir, options, targets).values():
+        names.update(group)
     return sorted(names)
 
 
@@ -396,40 +423,82 @@ def patch_ptc_data(
 
     if metadata_exists is None:
         metadata_exists = remote_metadata_exists
+    metadata_cache: dict[str, bool] = {}
+
+    def has_metadata(model: str) -> bool:
+        if model not in metadata_cache:
+            metadata_cache[model] = bool(metadata_exists(model))
+        return metadata_cache[model]
+
     existing_models = list(options.get("models") or [])
-    discovered = forecast_model_names(forecasts_dir, options)
-    merged_models = union_models(existing_models, discovered)
+    by_target_names = forecast_model_names_by_target(forecasts_dir, options, order)
+    discovered_names: set[str] = set()
+    for names in by_target_names.values():
+        discovered_names.update(names)
+    discovered = sorted(discovered_names)
+    # Existing order first, then newly discovered ids. Metadata is required
+    # either way, so a deleted test model that only remains in old forecast
+    # JSON is not kept.
+    candidates = union_models(existing_models, discovered)
+    kept_models = [model for model in candidates if has_metadata(model)]
+    checked = {
+        model
+        for model in (options.get("initial_checked_models") or [])
+        if isinstance(model, str)
+    }
+    dropped_checked = [model for model in existing_models if model in checked and model not in set(kept_models)]
+    if dropped_checked:
+        raise RuntimeError(
+            "refusing to drop initial_checked_models with no Hub metadata: "
+            + ", ".join(dropped_checked)
+        )
+    if "models" in options and not kept_models:
+        raise RuntimeError("no models with Hub metadata left; refusing to write an empty models list")
+
     existing_urls = options.get("model_urls")
-    urls = dict(existing_urls or {})
-    for model in merged_models:
-        if model in urls:
-            continue
-        if metadata_exists(model):
+    urls: dict[str, str] = {}
+    for model in kept_models:
+        if isinstance(existing_urls, dict) and model in existing_urls:
+            urls[model] = existing_urls[model]
+        else:
             urls[model] = metadata_url(model)
 
+    models_by_target = {
+        target: [model for model in kept_models if model in by_target_names.get(target, set())]
+        for target in order
+    }
+
     if "models" in options:
-        models_changed = merged_models != existing_models
+        models_changed = kept_models != existing_models
     else:
-        models_changed = bool(merged_models)
+        models_changed = bool(kept_models)
     if existing_urls is None:
         urls_changed = bool(urls)
     else:
         urls_changed = urls != existing_urls
 
     result.available_as_ofs = new_as_ofs
-    result.models = merged_models
-    result.models_added = [model for model in merged_models if model not in existing_models]
+    result.models = kept_models
+    result.models_added = [model for model in kept_models if model not in existing_models]
+    result.models_removed = [model for model in existing_models if model not in set(kept_models)]
+    result.models_by_target = models_by_target
     result.options_changed = (
         new_as_ofs != options.get("available_as_ofs") or models_changed or urls_changed
     )
     if result.options_changed:
         options["available_as_ofs"] = new_as_ofs
-        if "models" in options or merged_models:
-            options["models"] = merged_models
+        if "models" in options or kept_models:
+            options["models"] = kept_models
         if existing_urls is not None or urls:
             options["model_urls"] = urls
         # Match upstream json.dump(..., indent=4): no trailing newline after "}".
         options_path.write_text(json.dumps(options, indent=4))
+
+    side_path = ptc_data / MODELS_BY_TARGET
+    side_text = json.dumps(models_by_target, indent=4) + "\n"
+    result.models_by_target_changed = (not side_path.exists()) or side_path.read_text() != side_text
+    if result.models_by_target_changed:
+        side_path.write_text(side_text)
     return result
 
 
@@ -450,7 +519,16 @@ def main(argv: list[str] | None = None) -> None:
         print(f"wrote {len(result.wrote)} target file(s)")
     if result.models_added:
         print("models added: " + ", ".join(result.models_added))
-    if not result.options_changed and not result.removed and not result.wrote:
+    if result.models_removed:
+        print("models removed: " + ", ".join(result.models_removed))
+    if result.models_by_target_changed:
+        print(f"updated {MODELS_BY_TARGET}")
+    if (
+        not result.options_changed
+        and not result.removed
+        and not result.wrote
+        and not result.models_by_target_changed
+    ):
         print("no changes")
 
 

@@ -1,7 +1,13 @@
 ---
 hub: dailypartita/China-Infectious-Disease-Forecast-Hub
 title: China Infectious Disease Forecast Hub
+# target-models.js is copied into the site. after-body.html replaces the
+# builder's blank.html (external links) and loads the per-target picker.
+# The builder overwrites resources/predtimechart.js on every Rebuild Site.
+resources:
+  - resources/target-models.js
 html:
   css: home.css
+  include-after-body: resources/after-body.html
 pages:
   - data.qmd
