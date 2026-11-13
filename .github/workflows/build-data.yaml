@@ -1,7 +1,8 @@
 name: "Rebuild Data"
 # PredTimeChart options written here are corrected afterwards by
 # .github/workflows/dengue-truth.yaml (dengue truth JSON, available_as_ofs,
-# and model names found only in flu or dengue forecasts).
+# and the model list limited to Hub model-metadata). That patch also writes
+# models-by-target.json for the forecast-page picker.
 # Score generation is the local copy of the hubverse reusable workflow
 # (.github/workflows/generate-data.yaml): an eval set with forecasts but no
 # overlapping observations is skipped instead of failing the run.

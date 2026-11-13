@@ -13,9 +13,13 @@ name: Patch dengue truth and as-of options
 # This workflow runs after every successful Rebuild Data: it writes dengue
 # truth JSON, drops flu snapshots that disagree with the current Hub CNIC
 # series, backfills target JSON for forecast weeks that would otherwise 404,
-# rewrites available_as_ofs to dates that have a real target file, and unions
-# model ids from those forecast JSON files into models (with Hub metadata
-# links when the yaml exists). initial_checked_models is left unchanged.
+# rewrites available_as_ofs to dates that have a real target file, and keeps a
+# model in models only when Hub model-metadata/<model>.yaml still exists
+# (with a metadata link in that case). Models that remain only in historical
+# forecast JSON are dropped. initial_checked_models is left unchanged. The
+# same run writes models-by-target.json so the forecast page can list the
+# models that have forecast data for the selected target. That mapping is not
+# stored in predtimechart-options.json: predtimechart v3 rejects extra fields.
 # workflow_dispatch runs the same patch without waiting for Rebuild Data.
 on:
   workflow_run:
@@ -54,7 +58,7 @@ jobs:
       - name: Commit and push if changed
         working-directory: ptc-data
         run: |
-          git add -- targets/ predtimechart-options.json
+          git add -- targets/ predtimechart-options.json models-by-target.json
           if [[ -z "$(git diff --cached --name-only)" ]]; then
             echo "no changes"
           else

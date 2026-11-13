@@ -1,6 +1,8 @@
 pages/_site/*
 pages/.quarto/*
 pages/resources/*
+!pages/resources/after-body.html
+!pages/resources/target-models.js
 pages/_quarto.yml
 pages/forecasts.qmd
 pages/forecast.qmd
