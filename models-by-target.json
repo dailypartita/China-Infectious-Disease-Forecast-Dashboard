@@ -1,0 +1,24 @@
+{
+    "wk inc covid prop ili": [
+        "CNCovidHub-ensemble",
+        "GZNL-NextWave",
+        "LZU-Sentinel",
+        "MUST-SEIRS",
+        "XMU_CTModelling-FNN",
+        "XMU_CTModelling-GRU",
+        "XMU_CTModelling-LSTM",
+        "XMU_CTModelling-TCN",
+        "XMU_CTModelling-XGBoost",
+        "GZNL-VincentAvg",
+        "LZU-ASVENKF",
+        "LZU-LES",
+        "LZU-SetPredict",
+        "LZU-SinglePoint"
+    ],
+    "wk inc flu prop ili": [
+        "GZNL-FluLGBMCQR"
+    ],
+    "mo inc dengue cases": [
+        "GZNL-DengueLGBMCQR"
+    ]
+}
