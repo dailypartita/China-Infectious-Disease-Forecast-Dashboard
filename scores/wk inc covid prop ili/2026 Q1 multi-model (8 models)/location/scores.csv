@@ -1,8 +1,6 @@
 "model_id","location","ae_median","wis","interval_coverage_95","n"
 "CNCovidHub-ensemble","CN",1.001,0.766381739130435,0.375,8
 "GZNL-NextWave","CN",0.62875,0.5324875,1,8
-"GZNL-QuantileBoost","CN",0.47875,0.36528152173913,1,8
-"GZNL-Statistical","CN",0.36875,0.362428260869565,1,8
 "GZNL-VincentAvg","CN",0.43875,0.381439673913044,1,8
 "XMU_CTModelling-FNN","CN",1.015,0.780238043478261,0.5,8
 "XMU_CTModelling-GRU","CN",0.89375,0.692879891304348,0.5,8

@@ -1,5 +1,3 @@
 "model_id","location","ae_median","wis","interval_coverage_95","n"
 "GZNL-NextWave","CN",0.215,0.390780434782609,1,2
-"GZNL-QuantileBoost","CN",0.315,0.2958,1,2
-"GZNL-Statistical","CN",0.86,0.534991304347826,1,2
 "GZNL-VincentAvg","CN",0.46,0.389763043478261,1,2
