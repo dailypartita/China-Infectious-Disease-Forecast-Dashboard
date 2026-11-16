@@ -42,6 +42,17 @@ this script:
   lists Hub-registered models that appear in that target's forecast JSON.
   The forecast page uses the file to hide models that only forecast a
   different pathogen. Historical forecast JSON is left on disk.
+- for each as-of date T, copies each still-registered model's latest
+  forecast with reference_date <= T into that date's forecast JSON.
+  Models are isolated by target: a flu or dengue model is never written
+  into a COVID file, and the same rule applies the other way. A model
+  whose first submission is after T is left out of that file (no curve)
+  but stays in ``models-by-target.json`` so it remains selectable.
+  Deleted test models that only remain in historical forecast JSON are
+  not carried forward. Leftover ``wk-inc-flu-hosp_*`` files are not
+  patched. The rewrite is idempotent, so a later Rebuild Data can
+  regenerate the original files and this script will re-apply the same
+  carry-forwards.
 
 Runs against a local checkout of the ptc/data branch. Idempotent.
 """
@@ -77,6 +88,7 @@ class PatchResult:
     models_by_target: dict[str, list[str]] = field(default_factory=dict)
     removed: list[str] = field(default_factory=list)
     wrote: list[str] = field(default_factory=list)
+    forecasts_wrote: list[str] = field(default_factory=list)
     options_changed: bool = False
     models_by_target_changed: bool = False
 
@@ -372,6 +384,101 @@ def forecast_model_names(forecasts_dir: Path, options: dict) -> list[str]:
     return sorted(names)
 
 
+def read_forecast(path: Path) -> dict | None:
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def collect_original_forecasts(
+    forecasts_dir: Path,
+    prefixes: list[str],
+) -> dict[str, list[tuple[str, object]]]:
+    """True submissions for each model, oldest first.
+
+    A date is an original submission when the model's payload first appears
+    or differs from its previous original payload. Identical copies left by
+    an earlier carry-forward run are not treated as new reference dates, so
+    a later week is never used as the source for an earlier as-of.
+    """
+    dates_to_path: dict[str, Path] = {}
+    for prefix in prefixes:
+        dates_to_path.update(dates_for_prefix(forecasts_dir, prefix))
+    originals: dict[str, list[tuple[str, object]]] = {}
+    last: dict[str, object] = {}
+    for date in sorted(dates_to_path):
+        payload = read_forecast(dates_to_path[date])
+        if not payload:
+            continue
+        for model, body in payload.items():
+            if not (isinstance(model, str) and MODEL_ID.fullmatch(model)):
+                continue
+            if model not in last or last[model] != body:
+                originals.setdefault(model, []).append((date, body))
+                last[model] = body
+    return originals
+
+
+def latest_forecast_at_or_before(
+    entries: list[tuple[str, object]],
+    as_of: str,
+) -> tuple[str, object] | None:
+    latest = None
+    for date, body in entries:
+        if date <= as_of:
+            latest = (date, body)
+        else:
+            break
+    return latest
+
+
+def apply_carry_forward_forecasts(
+    forecasts_dir: Path,
+    prefixes: list[str],
+    as_of_dates: list[str],
+    has_metadata,
+    result: PatchResult,
+) -> None:
+    """Fill each as-of T with the latest still-registered forecast at or before T."""
+    for prefix in prefixes:
+        originals = collect_original_forecasts(forecasts_dir, [prefix])
+        by_date = dates_for_prefix(forecasts_dir, prefix)
+        for as_of in as_of_dates:
+            if not ISO_DATE.match(as_of):
+                continue
+            new_payload: dict[str, object] = {}
+            for model, entries in originals.items():
+                for orig_date, body in entries:
+                    if orig_date == as_of:
+                        new_payload[model] = body
+            for model, entries in originals.items():
+                if not has_metadata(model):
+                    continue
+                latest = latest_forecast_at_or_before(entries, as_of)
+                if latest is None:
+                    continue
+                orig_date, body = latest
+                if orig_date == as_of:
+                    continue
+                new_payload[model] = body
+            path = by_date.get(as_of, forecasts_dir / f"{prefix}{as_of}.json")
+            if not new_payload:
+                if not path.exists():
+                    continue
+                existing = read_forecast(path)
+                if existing == {}:
+                    continue
+                ordered: dict[str, object] = {}
+            else:
+                ordered = {model: new_payload[model] for model in sorted(new_payload)}
+            if write_json(path, ordered):
+                result.forecasts_wrote.append(path.name)
+
+
 def union_models(existing: list[str], discovered: list[str]) -> list[str]:
     """Keep ``existing`` order and append newly discovered ids, sorted."""
     seen = set(existing)
@@ -431,6 +538,14 @@ def patch_ptc_data(
         return metadata_cache[model]
 
     existing_models = list(options.get("models") or [])
+    for target in order:
+        apply_carry_forward_forecasts(
+            forecasts_dir,
+            prefixes=file_prefixes(target, options.get("task_ids", {}).get(target) or {}),
+            as_of_dates=new_as_ofs.get(target, []),
+            has_metadata=has_metadata,
+            result=result,
+        )
     by_target_names = forecast_model_names_by_target(forecasts_dir, options, order)
     discovered_names: set[str] = set()
     for names in by_target_names.values():
@@ -517,6 +632,8 @@ def main(argv: list[str] | None = None) -> None:
         print("removed: " + ", ".join(result.removed))
     if result.wrote:
         print(f"wrote {len(result.wrote)} target file(s)")
+    if result.forecasts_wrote:
+        print(f"wrote {len(result.forecasts_wrote)} forecast file(s)")
     if result.models_added:
         print("models added: " + ", ".join(result.models_added))
     if result.models_removed:
@@ -527,6 +644,7 @@ def main(argv: list[str] | None = None) -> None:
         not result.options_changed
         and not result.removed
         and not result.wrote
+        and not result.forecasts_wrote
         and not result.models_by_target_changed
     ):
         print("no changes")

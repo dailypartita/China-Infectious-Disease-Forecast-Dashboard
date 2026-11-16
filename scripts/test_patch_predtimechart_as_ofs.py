@@ -612,5 +612,273 @@ class PatchAsOfTests(unittest.TestCase):
         self.assertEqual((self.root / "models-by-target.json").read_bytes(), side_bytes)
 
 
+    def test_carry_forward_covid_as_of_contract(self):
+        """COVID 2026-11-09 / 2026-11-16 carry-forward contract, plus flu and dengue.
+
+        Fixture mirrors the live Hub / ptc/data rule: same-day forecasts win,
+        earlier still-registered submissions are reused, later weeks are not
+        drawn on an earlier as-of, and deleted test models stay in their
+        original files only.
+        """
+        covid = "wk inc covid prop ili"
+        flu = "wk inc flu prop ili"
+        dengue = "mo inc dengue cases"
+
+        def fc(tag):
+            return {"target_end_date": ["2030-01-01"], "q0.5": [tag]}
+
+        registered = [
+            "CNCovidHub-ensemble",
+            "GZNL-DengueLGBMCQR",
+            "GZNL-FluLGBMCQR",
+            "GZNL-Mantis",
+            "GZNL-NextWave",
+            "GZNL-VincentAvg",
+            "LZU-ASVENKF",
+            "LZU-LES",
+            "LZU-Sentinel",
+            "LZU-SetPredict",
+            "LZU-SinglePoint",
+            "MUST-SEIRS",
+            "XMU_CTModelling-FNN",
+            "XMU_CTModelling-GRU",
+            "XMU_CTModelling-LSTM",
+            "XMU_CTModelling-TCN",
+            "XMU_CTModelling-XGBoost",
+            "YIMUU-DiffQGBM",
+        ]
+        xmu = [
+            "XMU_CTModelling-FNN",
+            "XMU_CTModelling-GRU",
+            "XMU_CTModelling-LSTM",
+            "XMU_CTModelling-TCN",
+            "XMU_CTModelling-XGBoost",
+        ]
+        other_lzu = ["LZU-ASVENKF", "LZU-LES", "LZU-SetPredict", "LZU-SinglePoint"]
+        covid_dates = [
+            "2026-01-19",
+            "2026-08-31",
+            "2026-09-21",
+            "2026-11-02",
+            "2026-11-09",
+            "2026-11-16",
+        ]
+        flu_dates = ["2026-11-02", "2026-11-09", "2026-11-16"]
+        dengue_dates = ["2009-09-07", "2026-11-01", "2026-11-02", "2026-11-09", "2026-11-16"]
+        options = _options(**{covid: list(covid_dates), flu: list(flu_dates), dengue: list(dengue_dates)})
+        options["current_date"] = "2026-11-16"
+        options["initial_as_of"] = "2026-11-16"
+        options["models"] = list(registered) + ["GZNL-test_001"]
+        options["initial_checked_models"] = ["GZNL-NextWave"]
+        self._save_options(options)
+
+        hub_covid = {date: 1.0 + i * 0.1 for i, date in enumerate(["2026-01-12", "2026-08-24", "2026-09-14", "2026-10-26", "2026-11-02", "2026-11-09"])}
+        hub_flu = {"2026-10-26": 12.4, "2026-11-02": 12.6, "2026-11-09": 12.8}
+        for date in covid_dates:
+            _write(
+                self.targets / f"wk-inc-covid-prop-ili_CN_{date}.json",
+                _series([d for d in sorted(hub_covid) if d <= date], [hub_covid[d] for d in sorted(hub_covid) if d <= date]),
+            )
+        flu_series_full = _series(sorted(hub_flu), [hub_flu[d] for d in sorted(hub_flu)])
+        for date in flu_dates:
+            if date == "2026-11-16":
+                _write(self.targets / f"wk-inc-flu-prop-ili_CN_{date}.json", flu_series_full)
+            else:
+                _write(
+                    self.targets / f"wk-inc-flu-prop-ili_CN_{date}.json",
+                    _series([d for d in sorted(hub_flu) if d <= date], [hub_flu[d] for d in sorted(hub_flu) if d <= date]),
+                )
+        for date in dengue_dates:
+            _write(
+                self.targets / f"mo-inc-dengue-cases_CN_{date}.json",
+                _series(["2004-01-01"], [3]),
+            )
+
+        def write_fc(name, payload):
+            (self.forecasts / name).write_text(json.dumps(payload, indent=4))
+
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2025-08-21.json",
+            {"GZNL-test_001": fc(821)},
+        )
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2026-01-19.json",
+            {"MUST-SEIRS": fc(119), "GZNL-NextWave": fc(1190), "GZNL-VincentAvg": fc(1191)},
+        )
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2026-08-31.json",
+            {
+                "CNCovidHub-ensemble": fc(831),
+                "GZNL-NextWave": fc(8310),
+                "GZNL-VincentAvg": fc(8311),
+            },
+        )
+        xmu_lzu = {model: fc(9210 + i) for i, model in enumerate(xmu + other_lzu)}
+        xmu_lzu["LZU-Sentinel"] = fc(921)
+        xmu_lzu["GZNL-NextWave"] = fc(9211)
+        xmu_lzu["GZNL-VincentAvg"] = fc(9212)
+        write_fc("wk-inc-covid-prop-ili_CN_2026-09-21.json", xmu_lzu)
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2026-11-02.json",
+            {
+                "LZU-Sentinel": fc(1102),
+                "GZNL-NextWave": fc(11020),
+                "GZNL-VincentAvg": fc(11021),
+            },
+        )
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2026-11-09.json",
+            {"GZNL-NextWave": fc(1109), "GZNL-VincentAvg": fc(11091)},
+        )
+        write_fc(
+            "wk-inc-covid-prop-ili_CN_2026-11-16.json",
+            {
+                "GZNL-NextWave": fc(1116),
+                "GZNL-VincentAvg": fc(11161),
+                "GZNL-Mantis": fc(11162),
+                "YIMUU-DiffQGBM": fc(11163),
+            },
+        )
+        write_fc("wk-inc-flu-prop-ili_CN_2026-11-09.json", {"GZNL-FluLGBMCQR": fc(11090)})
+        write_fc("mo-inc-dengue-cases_CN_2026-11-01.json", {"GZNL-DengueLGBMCQR": fc(1101)})
+        hosp = self.forecasts / "wk-inc-flu-hosp_US_2025-05-31.json"
+        hosp.write_text('{"FluSight-baseline": {"target_end_date": ["2023-10-14"]}}\n')
+
+        result = patch.patch_ptc_data(
+            self.root,
+            {covid: hub_covid, flu: hub_flu},
+            metadata_exists=lambda model: model in registered,
+        )
+
+        nov9 = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-09.json").read_text())
+        self.assertEqual(nov9["GZNL-NextWave"], fc(1109))
+        self.assertEqual(nov9["GZNL-VincentAvg"], fc(11091))
+        self.assertEqual(nov9["LZU-Sentinel"], fc(1102))
+        self.assertEqual(nov9["CNCovidHub-ensemble"], fc(831))
+        self.assertEqual(nov9["MUST-SEIRS"], fc(119))
+        for model in xmu:
+            self.assertEqual(nov9[model], xmu_lzu[model])
+        for model in other_lzu:
+            self.assertEqual(nov9[model], xmu_lzu[model])
+        self.assertNotIn("GZNL-Mantis", nov9)
+        self.assertNotIn("YIMUU-DiffQGBM", nov9)
+        self.assertNotIn("GZNL-FluLGBMCQR", nov9)
+        self.assertNotIn("GZNL-DengueLGBMCQR", nov9)
+        self.assertNotIn("GZNL-test_001", nov9)
+
+        nov16 = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-16.json").read_text())
+        self.assertEqual(nov16["GZNL-NextWave"], fc(1116))
+        self.assertEqual(nov16["GZNL-VincentAvg"], fc(11161))
+        self.assertEqual(nov16["GZNL-Mantis"], fc(11162))
+        self.assertEqual(nov16["YIMUU-DiffQGBM"], fc(11163))
+        self.assertEqual(nov16["LZU-Sentinel"], fc(1102))
+        self.assertEqual(nov16["CNCovidHub-ensemble"], fc(831))
+        self.assertEqual(nov16["MUST-SEIRS"], fc(119))
+        for model in xmu + other_lzu:
+            self.assertEqual(nov16[model], xmu_lzu[model])
+        self.assertNotIn("GZNL-FluLGBMCQR", nov16)
+        self.assertNotIn("GZNL-DengueLGBMCQR", nov16)
+        self.assertNotIn("GZNL-test_001", nov16)
+
+        jan19 = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-01-19.json").read_text())
+        self.assertEqual(jan19["MUST-SEIRS"], fc(119))
+        self.assertNotIn("CNCovidHub-ensemble", jan19)
+        self.assertNotIn("LZU-Sentinel", jan19)
+        self.assertNotIn("GZNL-Mantis", jan19)
+        deleted = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2025-08-21.json").read_text())
+        self.assertEqual(deleted, {"GZNL-test_001": fc(821)})
+
+        flu1102 = self.forecasts / "wk-inc-flu-prop-ili_CN_2026-11-02.json"
+        self.assertFalse(flu1102.exists())
+        flu1109 = json.loads((self.forecasts / "wk-inc-flu-prop-ili_CN_2026-11-09.json").read_text())
+        self.assertEqual(flu1109, {"GZNL-FluLGBMCQR": fc(11090)})
+        flu1116 = json.loads((self.forecasts / "wk-inc-flu-prop-ili_CN_2026-11-16.json").read_text())
+        self.assertEqual(flu1116, {"GZNL-FluLGBMCQR": fc(11090)})
+        self.assertNotIn("GZNL-NextWave", flu1116)
+
+        self.assertFalse((self.forecasts / "mo-inc-dengue-cases_CN_2009-09-07.json").exists())
+        dengue1101 = json.loads((self.forecasts / "mo-inc-dengue-cases_CN_2026-11-01.json").read_text())
+        self.assertEqual(dengue1101, {"GZNL-DengueLGBMCQR": fc(1101)})
+        for date in ("2026-11-02", "2026-11-09", "2026-11-16"):
+            carried = json.loads((self.forecasts / f"mo-inc-dengue-cases_CN_{date}.json").read_text())
+            self.assertEqual(carried, {"GZNL-DengueLGBMCQR": fc(1101)})
+            self.assertNotIn("GZNL-NextWave", carried)
+
+        self.assertEqual(
+            json.loads(hosp.read_text()),
+            {"FluSight-baseline": {"target_end_date": ["2023-10-14"]}},
+        )
+        self.assertIn("GZNL-Mantis", result.models_by_target[covid])
+        self.assertIn("YIMUU-DiffQGBM", result.models_by_target[covid])
+        self.assertNotIn("GZNL-FluLGBMCQR", result.models_by_target[covid])
+        self.assertNotIn("GZNL-DengueLGBMCQR", result.models_by_target[covid])
+        self.assertNotIn("GZNL-test_001", result.models_by_target[covid])
+        self.assertEqual(result.models_by_target[flu], ["GZNL-FluLGBMCQR"])
+        self.assertEqual(result.models_by_target[dengue], ["GZNL-DengueLGBMCQR"])
+
+        snapshot = {
+            path: path.read_bytes()
+            for path in sorted(self.forecasts.glob("*.json"))
+        }
+        options_bytes = (self.root / "predtimechart-options.json").read_bytes()
+        side_bytes = (self.root / "models-by-target.json").read_bytes()
+        second = patch.patch_ptc_data(
+            self.root,
+            {covid: hub_covid, flu: hub_flu},
+            metadata_exists=lambda model: model in registered,
+        )
+        self.assertEqual(second.forecasts_wrote, [])
+        self.assertFalse(second.options_changed)
+        self.assertFalse(second.models_by_target_changed)
+        self.assertEqual((self.root / "predtimechart-options.json").read_bytes(), options_bytes)
+        self.assertEqual((self.root / "models-by-target.json").read_bytes(), side_bytes)
+        self.assertEqual(
+            {path: path.read_bytes() for path in sorted(self.forecasts.glob("*.json"))},
+            snapshot,
+        )
+
+    def test_carry_forward_detects_originals_after_previous_patch(self):
+        covid = "wk inc covid prop ili"
+        options = _options(**{covid: ["2026-11-02", "2026-11-09", "2026-11-16"]})
+        options["current_date"] = "2026-11-16"
+        options["models"] = ["GZNL-NextWave"]
+        options["initial_checked_models"] = ["GZNL-NextWave"]
+        self._save_options(options)
+        hub = {"2026-10-26": 1.3, "2026-11-02": 1.2, "2026-11-09": 1.1}
+        for date in ("2026-11-02", "2026-11-09", "2026-11-16"):
+            _write(
+                self.targets / f"wk-inc-covid-prop-ili_CN_{date}.json",
+                _series([d for d in sorted(hub) if d <= date], [hub[d] for d in sorted(hub) if d <= date]),
+            )
+        early = {"GZNL-NextWave": {"target_end_date": ["2026-11-09"], "q0.5": [2]}}
+        late = {"GZNL-NextWave": {"target_end_date": ["2026-11-23"], "q0.5": [3]}}
+        (self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-02.json").write_text(json.dumps(early, indent=4))
+        (self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-16.json").write_text(json.dumps(late, indent=4))
+        # Simulate a previous carry-forward of the 11-02 payload into 11-09.
+        (self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-09.json").write_text(json.dumps(early, indent=4))
+
+        result = patch.patch_ptc_data(
+            self.root,
+            {covid: hub},
+            metadata_exists=lambda model: model == "GZNL-NextWave",
+        )
+        nov9 = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-09.json").read_text())
+        nov16 = json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-16.json").read_text())
+        self.assertEqual(nov9["GZNL-NextWave"]["q0.5"], [2])
+        self.assertEqual(nov16["GZNL-NextWave"]["q0.5"], [3])
+        # A second run must not treat the 11-16 payload as the source for 11-09.
+        again = patch.patch_ptc_data(
+            self.root,
+            {covid: hub},
+            metadata_exists=lambda model: model == "GZNL-NextWave",
+        )
+        self.assertEqual(again.forecasts_wrote, [])
+        self.assertEqual(
+            json.loads((self.forecasts / "wk-inc-covid-prop-ili_CN_2026-11-09.json").read_text())["GZNL-NextWave"]["q0.5"],
+            [2],
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()
