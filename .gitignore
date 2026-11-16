@@ -3,6 +3,8 @@ pages/.quarto/*
 pages/resources/*
 !pages/resources/after-body.html
 !pages/resources/target-models.js
+!pages/resources/guangdong-dengue.js
+!pages/resources/guangdong_dengue_monthly.csv
 pages/_quarto.yml
 pages/forecasts.qmd
 pages/forecast.qmd
