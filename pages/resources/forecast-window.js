@@ -10,8 +10,10 @@
 // flu positivity autorange, including after leaving the dengue scale.
 // Chart titles and the disclaimer above the plot are set per Outcome so
 // the three pathogen views are distinct. If the current as-of has no
-// forecast file, we step back through recent as-of dates for that Outcome
-// until one loads, then use that window. A first-load ?xaxis_range= or
+// forecast file, we probe recent as-of dates for that Outcome in both
+// directions (not only earlier ones) and jump to the latest date that
+// has forecasts. This matters after leaving dengue's 2026-11-01 as-of
+// for flu, whose only forecast file is 2026-11-09. A first-load ?xaxis_range= or
 // ?yaxis_range= share link is honored once on that axis; later Outcome or
 // as-of changes still refocus. Manual zoom is kept until then. Season
 // mode is left to PredTimeChart. The site builder overwrites
@@ -257,7 +259,7 @@ function computeXaxisRange(state) {
     return [left, right];
 }
 
-function asOfsBeforeCurrent(state, limit) {
+function asOfsToProbe(state, limit) {
     limit = limit == null ? FORECAST_ASOF_PROBE_LIMIT : limit;
     var target = state && state.selected_target_var;
     var list = state && state.available_as_ofs && target
@@ -267,16 +269,23 @@ function asOfsBeforeCurrent(state, limit) {
         return [];
     }
     var current = ymd(state.selected_as_of_date);
-    var earlier = [];
+    var seen = Object.create(null);
+    var candidates = [];
     for (var i = 0; i < list.length; i++) {
         var text = ymd(list[i]);
-        if (text && (!current || text < current)) {
-            earlier.push(text);
+        if (text && text !== current && !seen[text]) {
+            seen[text] = true;
+            candidates.push(text);
         }
     }
-    earlier.sort();
-    earlier.reverse();
-    return earlier.slice(0, limit);
+    candidates.sort();
+    candidates.reverse();
+    return candidates.slice(0, limit);
+}
+
+// Kept as a name used in earlier tests; same as asOfsToProbe.
+function asOfsBeforeCurrent(state, limit) {
+    return asOfsToProbe(state, limit);
 }
 
 function urlSpecifiesParam(name) {
@@ -361,7 +370,7 @@ function snapToLatestForecastAsOf(App) {
         return Promise.resolve(false);
     }
     var original = ymd(App.state.selected_as_of_date);
-    var candidates = asOfsBeforeCurrent(App.state, FORECAST_ASOF_PROBE_LIMIT);
+    var candidates = asOfsToProbe(App.state, FORECAST_ASOF_PROBE_LIMIT);
     if (!candidates.length || typeof App._fetchData !== "function") {
         return Promise.resolve(false);
     }
