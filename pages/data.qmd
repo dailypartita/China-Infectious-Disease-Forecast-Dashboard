@@ -10,6 +10,27 @@ All model-output, target, and configuration files for this hub are hosted on Git
 
 GitHub serves as the primary interface for operating the hub and collecting forecasts from modelers. You can access hub data by cloning the repository or downloading files directly from GitHub.
 
+## Guangdong dengue observed series
+
+This page also includes a compiled monthly series of dengue cases reported in Guangdong province, from July 2004 through September 2026. Counts are reported cases by current residence in the province, excluding Hong Kong, Macao, Taiwan, and foreign cases. This series is **not** a provincial split of the national China CDC monthly bulletin used as the hub target `mo inc dengue cases`, and it is not shown on the forecast page.
+
+Download the series as [CSV](resources/guangdong_dengue_monthly.csv). Each row is labeled with its source and URL.
+
+The compiled counts come from three sources:
+
+- July 2004–October 2023: [Public Health Science Data Center](https://www.phsciencedata.cn/Share/ky_sjml.jsp), compiled via the [globalID2 Guangdong table](https://github.com/xmusphlkg/globalID2_data_download/tree/main/countries/cn-gd)
+- April and May 2020 (two months missing from that table): [Lin et al., 2016–2024 (Zenodo)](https://doi.org/10.5281/zenodo.18391003)
+- November 2023–September 2026, including all of 2024 and the first half of 2025: [Guangdong Health Commission epidemic information](https://wsjkw.gd.gov.cn/zwyw_yqxx/) monthly notifiable-disease bulletins
+
+Twenty-five months in 2004–2014 have no published count (including February 2014). Those months are left blank in the CSV and appear as breaks in the chart; they are not filled as zero. Reported zeros, including May 2020, are plotted as zero.
+
+```{=html}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<div id="gd-dengue-chart" style="width:100%;height:480px;"></div>
+<p class="text-muted" id="gd-dengue-caption"></p>
+<script src="resources/guangdong-dengue.js"></script>
+```
+
 ## Data Access Methods
 
 The sections below provide examples for accessing hub data depending on your goals and preferred tools:
