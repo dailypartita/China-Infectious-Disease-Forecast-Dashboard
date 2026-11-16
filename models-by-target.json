@@ -9,11 +9,13 @@
         "XMU_CTModelling-LSTM",
         "XMU_CTModelling-TCN",
         "XMU_CTModelling-XGBoost",
+        "GZNL-Mantis",
         "GZNL-VincentAvg",
         "LZU-ASVENKF",
         "LZU-LES",
         "LZU-SetPredict",
-        "LZU-SinglePoint"
+        "LZU-SinglePoint",
+        "YIMUU-DiffQGBM"
     ],
     "wk inc flu prop ili": [
         "GZNL-FluLGBMCQR"
