@@ -198,9 +198,32 @@ const asOfState = {
     }
 };
 assertEqual(
-    context.asOfsBeforeCurrent(asOfState, 24),
+    context.asOfsToProbe(asOfState, 24),
     ["2026-11-02", "2026-11-01", "2026-10-26", "2026-10-01"],
     "probe as-ofs newer-first, excluding the current date"
+);
+
+const fluAsOfState = {
+    selected_target_var: "wk inc flu prop ili",
+    selected_as_of_date: "2026-11-02",
+    available_as_ofs: {
+        "wk inc flu prop ili": ["2026-11-02", "2026-11-09"]
+    }
+};
+assertEqual(
+    context.asOfsToProbe(fluAsOfState, 24),
+    ["2026-11-09"],
+    "flu at 2026-11-02 also probes the later forecast as-of"
+);
+const fluFromDengueAsOf = {
+    selected_target_var: "wk inc flu prop ili",
+    selected_as_of_date: "2026-11-01",
+    available_as_ofs: fluAsOfState.available_as_ofs
+};
+assertEqual(
+    context.asOfsToProbe(fluFromDengueAsOf, 24),
+    ["2026-11-09", "2026-11-02"],
+    "after dengue as-of, flu probes later dates first"
 );
 
 const context2 = {
@@ -348,7 +371,36 @@ context2.snapToLatestForecastAsOf(snapApp).then(function (snapped) {
     return context2.snapToLatestForecastAsOf(alreadyHas).then(function (noSnap) {
         assert(noSnap === false, "does not snap when forecasts already loaded");
         assertEqual(alreadyHas.state.selected_as_of_date, "2026-11-09", "keeps as-of when forecasts exist");
-        console.log("forecast window tests passed");
+
+        const fluProbeOk = { "2026-11-09": true };
+        const fluSnapApp = {
+            state: {
+                selected_target_var: "wk inc flu prop ili",
+                selected_as_of_date: "2026-11-02",
+                forecasts: {},
+                available_as_ofs: {
+                    "wk inc flu prop ili": ["2026-11-02", "2026-11-09"]
+                }
+            },
+            selectedTaskIDValues: function () { return { location: "CN" }; },
+            _fetchData: function (isForecast, target, taskIds, asOf) {
+                return Promise.resolve({ ok: !!fluProbeOk[asOf] });
+            },
+            fetchForecasts: function () {
+                this.state.forecasts = { "GZNL-FluLGBMCQR": { target_end_date: ["2026-12-21"] } };
+                return Promise.resolve();
+            },
+            fetchAsOfTruth: function () { return Promise.resolve(); },
+            updateTruthCheckboxLabels: function () {},
+            updateSeasonNavState: function () {},
+            showOptionsInURL: function () {}
+        };
+        return context2.snapToLatestForecastAsOf(fluSnapApp).then(function (fluSnapped) {
+            assert(fluSnapped === true, "flu snap returns true when a later forecast as-of exists");
+            assertEqual(fluSnapApp.state.selected_as_of_date, "2026-11-09", "snaps flu forward to the latest forecast as-of");
+            assert(context2.hasForecasts(fluSnapApp.state.forecasts), "flu forecasts loaded after snap");
+            console.log("forecast window tests passed");
+        });
     });
 }).catch(function (error) {
     console.error(error);
