@@ -6,6 +6,7 @@ title: China Infectious Disease Forecast Hub
 # The builder overwrites resources/predtimechart.js on every Rebuild Site.
 resources:
   - resources/target-models.js
+  - resources/forecast-window.js
   - resources/guangdong-dengue.js
   - resources/guangdong_dengue_monthly.csv
 html:
