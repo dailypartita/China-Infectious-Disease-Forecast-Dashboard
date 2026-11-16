@@ -35,6 +35,72 @@ assertEqual(context.addMonths("2026-03-31", -1), "2026-02-28", "clamp month-end"
 assert(context.isMonthlyTarget("mo inc dengue cases"), "dengue is monthly");
 assert(!context.isMonthlyTarget("wk inc covid prop ili"), "covid is weekly");
 assert(!context.isMonthlyTarget("wk inc flu prop ili"), "flu is weekly");
+assert(context.isDengueTarget("mo inc dengue cases"), "dengue target is recognized");
+assert(!context.isDengueTarget("wk inc covid prop ili"), "covid is not dengue");
+assertEqual(context.DENGUE_YAXIS_RANGE, [0, 30000], "dengue default y-axis is 0-30k");
+assertEqual(
+    context.computeYaxisRelayout("mo inc dengue cases")["yaxis.range"],
+    [0, 30000],
+    "dengue y-axis relayout uses 0-30k"
+);
+assertEqual(
+    context.computeYaxisRelayout("mo inc dengue cases")["yaxis.autorange"],
+    false,
+    "dengue y-axis is not autoranged"
+);
+assertEqual(
+    context.computeYaxisRelayout("wk inc covid prop ili")["yaxis.autorange"],
+    true,
+    "covid y-axis autoranges"
+);
+assertEqual(
+    context.computeYaxisRelayout("wk inc flu prop ili")["yaxis.autorange"],
+    true,
+    "flu y-axis autoranges"
+);
+assert(
+    !Object.prototype.hasOwnProperty.call(
+        context.computeYaxisRelayout("wk inc covid prop ili"),
+        "yaxis.range"
+    ),
+    "covid y-axis does not keep a fixed range"
+);
+
+const covidLabels = context.chartLabelsFor("wk inc covid prop ili");
+const fluLabels = context.chartLabelsFor("wk inc flu prop ili");
+const dengueLabels = context.chartLabelsFor("mo inc dengue cases");
+assert(covidLabels && fluLabels && dengueLabels, "each Outcome has labels");
+assert(covidLabels.title !== fluLabels.title, "covid and flu titles differ");
+assert(covidLabels.title !== dengueLabels.title, "covid and dengue titles differ");
+assert(fluLabels.title !== dengueLabels.title, "flu and dengue titles differ");
+assert(covidLabels.disclaimer !== fluLabels.disclaimer, "covid and flu disclaimers differ");
+assert(covidLabels.disclaimer !== dengueLabels.disclaimer, "covid and dengue disclaimers differ");
+assert(fluLabels.disclaimer !== dengueLabels.disclaimer, "flu and dengue disclaimers differ");
+assertEqual(dengueLabels.yaxis, "报告病例数", "dengue y-axis title is case counts");
+assertEqual(
+    context.plotTitleFor({
+        selected_target_var: "mo inc dengue cases",
+        selected_as_of_date: "2026-11-01"
+    }),
+    "中国登革热报告病例数预测（法定传染病月报）<br>截至 2026-11-01",
+    "dengue plot title includes as-of date"
+);
+assertEqual(
+    context.plotTitleFor({
+        selected_target_var: "wk inc covid prop ili",
+        selected_as_of_date: "2026-11-09"
+    }),
+    "中国新冠 ILI 阳性率预测（疾控哨点监测）<br>截至 2026-11-09",
+    "covid plot title is distinct"
+);
+assertEqual(
+    context.plotTitleFor({
+        selected_target_var: "wk inc flu prop ili",
+        selected_as_of_date: "2026-11-09"
+    }),
+    "中国流感 ILI 标本阳性率预测（国家流感中心）<br>截至 2026-11-09",
+    "flu plot title is distinct"
+);
 
 const covidState = {
     selected_target_var: "wk inc covid prop ili",
@@ -158,15 +224,45 @@ const app = {
 };
 const applied = context2.applyFocusRange(app);
 assertEqual(applied, ["2024-11-01", "2027-03-01"], "applyFocusRange returns dengue window");
-assertEqual(context2.Plotly.calls[0].update, {"xaxis.range": ["2024-11-01", "2027-03-01"]}, "relayout uses the window");
+const dengueUpdate = context2.Plotly.calls[0].update;
+assertEqual(dengueUpdate["xaxis.range"], ["2024-11-01", "2027-03-01"], "relayout uses the window");
+assertEqual(dengueUpdate["yaxis.range"], [0, 30000], "dengue relayout sets 0-30k y-axis");
+assertEqual(dengueUpdate["yaxis.autorange"], false, "dengue y-axis is fixed");
+assertEqual(
+    dengueUpdate["title.text"],
+    "中国登革热报告病例数预测（法定传染病月报）<br>截至 2026-11-01",
+    "dengue relayout sets the dengue title"
+);
+assertEqual(dengueUpdate["yaxis.title.text"], "报告病例数", "dengue y-axis title is case counts");
 assert(app.pickerInited, "date range picker is re-bound");
 assert(app.state._focusRangeApplied, "marks first apply");
+
+const covidApp = {
+    state: JSON.parse(JSON.stringify(covidState)),
+    initializeDateRangePicker: function () { this.pickerInited = true; }
+};
+context2.applyFocusRange(covidApp);
+const covidUpdate = context2.Plotly.calls[1].update;
+assertEqual(covidUpdate["yaxis.autorange"], true, "switching to covid autoranges y-axis");
+assert(
+    !Object.prototype.hasOwnProperty.call(covidUpdate, "yaxis.range"),
+    "covid relayout does not keep the dengue y-axis"
+);
+assert(
+    covidUpdate["title.text"].indexOf("新冠") !== -1 &&
+        covidUpdate["title.text"].indexOf("登革") === -1,
+    "covid relayout uses the covid title"
+);
 
 const urlContext = {
     console,
     URLSearchParams,
     document: { getElementById: function () { return { id: "ploty_div" }; } },
-    Plotly: { relayout: function () { this.called = true; }, called: false },
+    Plotly: {
+        relayout: function (plot, update) { this.called = true; this.lastUpdate = update; },
+        called: false,
+        lastUpdate: null
+    },
     window: { location: { search: "?xaxis_range=2020-01-01&xaxis_range=2021-01-01" } }
 };
 vm.createContext(urlContext);
@@ -174,7 +270,12 @@ vm.runInContext(source, urlContext);
 assert(urlContext.urlSpecifiesXaxis(), "URL xaxis_range is detected");
 const urlApp = { state: JSON.parse(JSON.stringify(covidState)) };
 assertEqual(urlContext.applyFocusRange(urlApp), false, "first load honors ?xaxis_range=");
-assert(!urlContext.Plotly.called, "does not relayout over a share-link zoom");
+assert(urlContext.Plotly.called, "still applies y-axis and titles on first load");
+assert(
+    !Object.prototype.hasOwnProperty.call(urlContext.Plotly.lastUpdate, "xaxis.range"),
+    "does not overwrite a share-link x zoom"
+);
+assertEqual(urlContext.Plotly.lastUpdate["yaxis.autorange"], true, "first load still autoranges covid y-axis");
 assert(urlApp.state._focusRangeApplied, "share-link zoom counts as first apply");
 urlApp.state.selected_target_var = "mo inc dengue cases";
 urlApp.state.selected_as_of_date = "2026-11-01";
@@ -182,6 +283,31 @@ urlApp.state.forecasts = dengueState.forecasts;
 urlApp.state.as_of_truth = dengueState.as_of_truth;
 const afterSwitch = urlContext.applyFocusRange(urlApp);
 assertEqual(afterSwitch, ["2024-11-01", "2027-03-01"], "later Outcome switch still refocuses");
+assertEqual(urlContext.Plotly.lastUpdate["xaxis.range"], ["2024-11-01", "2027-03-01"], "later switch sets x window");
+assertEqual(urlContext.Plotly.lastUpdate["yaxis.range"], [0, 30000], "later switch sets dengue y-axis");
+
+const yUrlContext = {
+    console,
+    URLSearchParams,
+    document: { getElementById: function () { return { id: "ploty_div" }; } },
+    Plotly: {
+        relayout: function (plot, update) { this.lastUpdate = update; this.called = true; },
+        called: false,
+        lastUpdate: null
+    },
+    window: { location: { search: "?yaxis_range=0&yaxis_range=80" } }
+};
+vm.createContext(yUrlContext);
+vm.runInContext(source, yUrlContext);
+assert(yUrlContext.urlSpecifiesYaxis(), "URL yaxis_range is detected");
+const yUrlApp = { state: JSON.parse(JSON.stringify(dengueState)) };
+assertEqual(yUrlContext.applyFocusRange(yUrlApp), ["2024-11-01", "2027-03-01"], "first load still sets x window");
+assert(
+    !Object.prototype.hasOwnProperty.call(yUrlContext.Plotly.lastUpdate, "yaxis.range") &&
+        !Object.prototype.hasOwnProperty.call(yUrlContext.Plotly.lastUpdate, "yaxis.autorange"),
+    "does not overwrite a share-link y zoom"
+);
+assertEqual(yUrlContext.Plotly.lastUpdate["xaxis.range"], ["2024-11-01", "2027-03-01"], "honoring y zoom still focuses x");
 
 // snapToLatestForecastAsOf probes and moves to the newest as-of with a file
 const probeOk = { "2026-11-01": true };
