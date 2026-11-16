@@ -6,8 +6,8 @@
 # keeps only that reference date. It also omits models that are neither
 # designated nor listed in initial_checked_models below. Dengue truth JSON,
 # the as-of lists, and those missing model names are corrected on ptc/data by
-# .github/workflows/dengue-truth.yaml after Rebuild Data. New models are not
-# added here, so they show up in the picker unchecked.
+# .github/workflows/dengue-truth.yaml after Rebuild Data. pages/resources/target-models.js then checks every remaining
+# model for the selected Outcome.
 rounds_idx: 0
 reference_date_col_name: reference_date
 target_date_col_name: target_end_date
