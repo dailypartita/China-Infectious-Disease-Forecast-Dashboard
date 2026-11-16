@@ -5,11 +5,26 @@
 // That file is the Hub-registered models that occur in each target's
 // forecast JSON. Models for another pathogen are left out of the picker.
 // Historical forecast JSON is not deleted.
+// After the allowed list for a target is known, all of those models are
+// checked so the plot shows every forecast for the selected Outcome.
+// Switching Outcome selects that target's full list again; unchecking a
+// model is kept until the Outcome (or the allowed list) changes. A URL
+// with ?model= is honored on the first load only.
 
 var TARGET_MODELS_URL = "https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Dashboard/refs/heads/ptc/data/models-by-target.json";
 var targetModelsByTarget = null;
 
-function applyTargetModelList(state, byTarget) {
+function urlSpecifiesModels() {
+    try {
+        return typeof window !== "undefined" && window.location &&
+            new URLSearchParams(window.location.search).has("model");
+    } catch (e) {
+        return false;
+    }
+}
+
+function applyTargetModelList(state, byTarget, options) {
+    options = options || {};
     if (!state._hubModels) {
         state._hubModels = (state.models || []).slice();
     }
@@ -26,10 +41,26 @@ function applyTargetModelList(state, byTarget) {
         state.models = state._hubModels.filter(function (model) {
             return allow[model] === true;
         });
+        var signature = String(target) + "\0" + state.models.join("\0");
+        if (state._selectedAllFor !== signature) {
+            var isFirstBind = !state._selectedAllFor;
+            state._selectedAllFor = signature;
+            if (isFirstBind && (options.keepExistingSelection || urlSpecifiesModels())) {
+                state.selected_models = (state.selected_models || []).filter(function (model) {
+                    return allow[model] === true;
+                });
+            } else {
+                state.selected_models = state.models.slice();
+            }
+        }
     } else {
         state.models = state._hubModels.slice();
     }
     return state.models.slice();
+}
+
+function selectedModelsKey(models) {
+    return (models || []).slice().sort().join("\0");
 }
 
 function installTargetModelFilter(App) {
@@ -40,11 +71,22 @@ function installTargetModelFilter(App) {
     var origUpdate = App.updateModelsList.bind(App);
     var origInit = App.initialize.bind(App);
     App.updateModelsList = function () {
+        var before = selectedModelsKey(App.state.selected_models);
         applyTargetModelList(App.state, targetModelsByTarget);
-        return origUpdate();
+        var result = origUpdate();
+        var after = selectedModelsKey(App.state.selected_models);
+        var plot = document.getElementById("ploty_div");
+        if (before !== after && typeof App.updatePlot === "function" && plot && "data" in plot) {
+            App.updatePlot(true);
+            if (typeof App.showOptionsInURL === "function") {
+                App.showOptionsInURL();
+            }
+        }
+        return result;
     };
     App.initialize = function () {
         App.state._hubModels = null;
+        App.state._selectedAllFor = null;
         return origInit.apply(App, arguments);
     };
     document.addEventListener("change", function (event) {
@@ -56,6 +98,7 @@ function installTargetModelFilter(App) {
     // fetch beat this wrapper. selected_target_var is empty until then.
     if (App.state.selected_target_var) {
         App.state._hubModels = null;
+        App.state._selectedAllFor = null;
         App.updateModelsList();
     }
 }

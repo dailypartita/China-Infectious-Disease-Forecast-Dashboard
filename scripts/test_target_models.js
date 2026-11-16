@@ -69,8 +69,8 @@ assertEqual(
 assertEqual(state._hubModels, hub.concat(deleted), "full list kept");
 assertEqual(
     state.selected_models,
-    ["GZNL-NextWave", "GZNL-FluLGBMCQR"],
-    "checks survive a target filter"
+    byTarget["wk inc covid prop ili"],
+    "covid defaults to all of its models"
 );
 deleted.forEach(function (model) {
     if (state.models.indexOf(model) !== -1) {
@@ -84,16 +84,67 @@ if (state.models.indexOf("GZNL-FluLGBMCQR") !== -1) {
     throw new Error("flu model listed for covid");
 }
 
+state.selected_models = ["GZNL-NextWave"];
+assertEqual(
+    apply(state, byTarget),
+    byTarget["wk inc covid prop ili"],
+    "covid picker unchanged on a second apply"
+);
+assertEqual(
+    state.selected_models,
+    ["GZNL-NextWave"],
+    "manual unchecks are kept until the outcome changes"
+);
+
 state.selected_target_var = "mo inc dengue cases";
 assertEqual(apply(state, byTarget), ["GZNL-DengueLGBMCQR"], "dengue picker");
+assertEqual(
+    state.selected_models,
+    ["GZNL-DengueLGBMCQR"],
+    "dengue defaults to its model"
+);
 if (state.models.indexOf("CNCovidHub-ensemble") !== -1) {
     throw new Error("covid model listed for dengue");
 }
 
 state.selected_target_var = "wk inc flu prop ili";
 assertEqual(apply(state, byTarget), ["GZNL-FluLGBMCQR"], "flu picker");
+assertEqual(
+    state.selected_models,
+    ["GZNL-FluLGBMCQR"],
+    "flu defaults to its model"
+);
 
 state.selected_target_var = "wk inc covid prop ili";
 assertEqual(apply(state, null), hub.concat(deleted), "missing file shows the global list");
+assertEqual(
+    state.selected_models,
+    ["GZNL-FluLGBMCQR"],
+    "missing file leaves the current checks alone"
+);
+
+const urlState = {
+    models: hub.concat(deleted),
+    selected_target_var: "wk inc covid prop ili",
+    selected_models: ["GZNL-NextWave", "GZNL-FluLGBMCQR"],
+};
+assertEqual(
+    apply(urlState, byTarget, { keepExistingSelection: true }),
+    byTarget["wk inc covid prop ili"],
+    "url first-load picker"
+);
+assertEqual(
+    urlState.selected_models,
+    ["GZNL-NextWave"],
+    "url model params are kept on first load"
+);
+
+urlState.selected_target_var = "mo inc dengue cases";
+assertEqual(apply(urlState, byTarget), ["GZNL-DengueLGBMCQR"], "url then switch picker");
+assertEqual(
+    urlState.selected_models,
+    ["GZNL-DengueLGBMCQR"],
+    "switching outcome still selects all models for the new target"
+);
 
 console.log("target model filter tests passed");
