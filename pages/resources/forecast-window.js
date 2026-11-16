@@ -1,20 +1,44 @@
-// PredTimeChart v3 keeps the current xaxis range across updates, so switching
-// Outcome leaves the previous pathogen's window in place. Forecasts that sit
-// past that right edge (dengue months beyond a weekly COVID window) are
-// clipped, and long truth series (flu from 2009, dengue from 2004) would
-// squeeze the latest forecasts if the axis autoranged. After each fetch we
-// set a tight window: a short recent history on the left, and the full
-// latest forecast horizon plus one interval of padding on the right.
-// If the current as-of has no forecast file, we step back through recent
-// as-of dates for that Outcome until one loads, then use that window.
-// A first-load ?xaxis_range= share link is honored once; later Outcome or
-// as-of changes still refocus. Manual zoom is kept until then. Season mode
-// is left to PredTimeChart. The site builder overwrites predtimechart.js,
-// so this hook lives here.
+// PredTimeChart v3 keeps the current xaxis and yaxis ranges across updates,
+// so switching Outcome leaves the previous pathogen's window in place.
+// Forecasts that sit past that right edge (dengue months beyond a weekly
+// COVID window) are clipped, and long truth series (flu from 2009, dengue
+// from 2004) would squeeze the latest forecasts if the axis autoranged.
+// After each fetch we set a tight window: a short recent history on the
+// left, and the full latest forecast horizon plus one interval of padding
+// on the right. Dengue case counts use a default y-axis of 0-30,000 so a
+// quiet recent season is not auto-zoomed to a few dozen cases. COVID and
+// flu positivity autorange, including after leaving the dengue scale.
+// Chart titles and the disclaimer above the plot are set per Outcome so
+// the three pathogen views are distinct. If the current as-of has no
+// forecast file, we step back through recent as-of dates for that Outcome
+// until one loads, then use that window. A first-load ?xaxis_range= or
+// ?yaxis_range= share link is honored once on that axis; later Outcome or
+// as-of changes still refocus. Manual zoom is kept until then. Season
+// mode is left to PredTimeChart. The site builder overwrites
+// predtimechart.js, so this hook lives here.
 
 var FORECAST_WINDOW_WEEKLY_HISTORY_DAYS = 364; // 52 weeks
 var FORECAST_WINDOW_MONTHLY_HISTORY_MONTHS = 24;
 var FORECAST_ASOF_PROBE_LIMIT = 24;
+var DENGUE_TARGET = "mo inc dengue cases";
+var DENGUE_YAXIS_RANGE = [0, 30000];
+var CHART_LABELS = {
+    "wk inc covid prop ili": {
+        title: "中国新冠 ILI 阳性率预测（疾控哨点监测）",
+        yaxis: "阳性率（%）",
+        disclaimer: "本图展示中国疾控中心哨点监测的全国 ILI 病例中 SARS-CoV-2 阳性率的多模型周预测。"
+    },
+    "wk inc flu prop ili": {
+        title: "中国流感 ILI 标本阳性率预测（国家流感中心）",
+        yaxis: "阳性率（%）",
+        disclaimer: "本图展示中国国家流感中心（CNIC）全国 ILI 标本实验室阳性率的多模型周预测。"
+    },
+    "mo inc dengue cases": {
+        title: "中国登革热报告病例数预测（法定传染病月报）",
+        yaxis: "报告病例数",
+        disclaimer: "本图展示中国疾控中心法定传染病月报的全国登革热报告病例数的多模型月预测。纵轴为病例数，默认范围为 0–30,000。"
+    }
+};
 
 function ymd(value) {
     if (value == null) {
@@ -73,6 +97,59 @@ function addMonths(value, months) {
 
 function isMonthlyTarget(target) {
     return typeof target === "string" && /^\s*mo\b/i.test(target);
+}
+
+function isDengueTarget(target) {
+    return target === DENGUE_TARGET || isMonthlyTarget(target);
+}
+
+function chartLabelsFor(target) {
+    return CHART_LABELS[target] || null;
+}
+
+function plotTitleFor(state) {
+    if (!state) {
+        return null;
+    }
+    var labels = chartLabelsFor(state.selected_target_var);
+    if (!labels) {
+        return null;
+    }
+    var asOf = ymd(state.selected_as_of_date);
+    return labels.title + (asOf ? "<br>截至 " + asOf : "");
+}
+
+function computeYaxisRelayout(target) {
+    if (isDengueTarget(target)) {
+        return {
+            "yaxis.range": DENGUE_YAXIS_RANGE.slice(),
+            "yaxis.autorange": false,
+            "yaxis.rangemode": "tozero"
+        };
+    }
+    return {
+        "yaxis.autorange": true,
+        "yaxis.rangemode": "tozero"
+    };
+}
+
+function applyChartLabels(App) {
+    if (!App || !App.state) {
+        return null;
+    }
+    var labels = chartLabelsFor(App.state.selected_target_var);
+    if (!labels) {
+        return null;
+    }
+    var title = plotTitleFor(App.state);
+    var disclaimer = typeof document !== "undefined" ? document.getElementById("disclaimer") : null;
+    if (disclaimer) {
+        disclaimer.textContent = labels.disclaimer;
+    }
+    return {
+        "title.text": title,
+        "yaxis.title.text": labels.yaxis
+    };
 }
 
 function minDate(dates) {
@@ -202,13 +279,21 @@ function asOfsBeforeCurrent(state, limit) {
     return earlier.slice(0, limit);
 }
 
-function urlSpecifiesXaxis() {
+function urlSpecifiesParam(name) {
     try {
         return typeof window !== "undefined" && window.location &&
-            new URLSearchParams(window.location.search).has("xaxis_range");
+            new URLSearchParams(window.location.search).has(name);
     } catch (e) {
         return false;
     }
+}
+
+function urlSpecifiesXaxis() {
+    return urlSpecifiesParam("xaxis_range");
+}
+
+function urlSpecifiesYaxis() {
+    return urlSpecifiesParam("yaxis_range");
 }
 
 function applyFocusRange(App, options) {
@@ -216,23 +301,42 @@ function applyFocusRange(App, options) {
     if (!App || !App.state || App.state.is_season_mode) {
         return false;
     }
-    if (!App.state._focusRangeApplied && !options.force && urlSpecifiesXaxis()) {
-        App.state._focusRangeApplied = true;
-        return false;
-    }
+    var firstApply = !App.state._focusRangeApplied && !options.force;
+    var skipX = firstApply && urlSpecifiesXaxis();
+    var skipY = firstApply && urlSpecifiesYaxis();
     var range = computeXaxisRange(App.state);
-    if (!range) {
-        return false;
+    var update = applyChartLabels(App) || {};
+    if (!skipX && range) {
+        update["xaxis.range"] = range;
+    }
+    if (!skipY) {
+        var yUpdate = computeYaxisRelayout(App.state.selected_target_var);
+        var key;
+        for (key in yUpdate) {
+            if (Object.prototype.hasOwnProperty.call(yUpdate, key)) {
+                update[key] = yUpdate[key];
+            }
+        }
     }
     var plot = typeof document !== "undefined" ? document.getElementById("ploty_div") : null;
-    if (plot && typeof Plotly !== "undefined" && typeof Plotly.relayout === "function") {
-        Plotly.relayout(plot, {"xaxis.range": range});
-        if (typeof App.initializeDateRangePicker === "function") {
+    var hasUpdate = false;
+    for (key in update) {
+        if (Object.prototype.hasOwnProperty.call(update, key)) {
+            hasUpdate = true;
+            break;
+        }
+    }
+    if (plot && hasUpdate && typeof Plotly !== "undefined" && typeof Plotly.relayout === "function") {
+        Plotly.relayout(plot, update);
+        if (update["xaxis.range"] && typeof App.initializeDateRangePicker === "function") {
             App.initializeDateRangePicker();
         }
     }
     App.state._focusRangeApplied = true;
     App.state._focusRange = range;
+    if (skipX || !range) {
+        return false;
+    }
     return range;
 }
 
