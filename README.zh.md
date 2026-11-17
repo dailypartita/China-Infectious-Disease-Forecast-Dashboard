@@ -31,15 +31,18 @@
 
 ## 参与模型
 
-当前活跃模型（7 个）：
+与 Hub [`model-metadata/`](https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/tree/main/model-metadata) 对齐的已注册模型（19 个）：
 
 | 团队 | 模型 |
 |------|------|
-| GZNL | NextWave（新冠阳性率周期演变 / 下一波情景预测） |
+| CNCovidHub | ensemble（Hub 加权分位数集成） |
+| GZNL | NextWave, VincentAvg, Mantis；FluLGBMCQR；DengueLGBMCQR, DengueSARIMAX |
+| LZU | Sentinel, ASVENKF, LES, SetPredict, SinglePoint |
 | XMU_CTModelling | FNN, LSTM, XGBoost, GRU, TCN |
 | MUST | SEIRS |
+| YIMUU | DiffQGBM |
 
-最新排名与详细指标请查看 Dashboard [Evaluation 页面](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/eval.html)。
+名单随 Hub 元数据更新；Dashboard 预测页选择器也会按 Hub 注册情况与各 target 是否有预测数据过滤。最新排名与详细指标请查看 [Evaluation 页面](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/eval.html)。
 
 ## 数据更新
 
