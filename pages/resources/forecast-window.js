@@ -9,7 +9,9 @@
 // quiet recent season is not auto-zoomed to a few dozen cases. COVID and
 // flu positivity autorange, including after leaving the dengue scale.
 // Chart titles and the disclaimer above the plot are set per Outcome so
-// the three pathogen views are distinct. If the current as-of has no
+// the three pathogen views are distinct. PredTimeChart's updatePlot()
+// calls Plotly.react without waiting, so we apply those titles after the
+// plot goes idle; doing it immediately lets the COVID title stick. If the current as-of has no
 // forecast file, we probe recent as-of dates for that Outcome in both
 // directions (not only earlier ones) and jump to the latest date that
 // has forecasts. This matters after leaving dengue's 2026-11-01 as-of
@@ -135,6 +137,16 @@ function computeYaxisRelayout(target) {
     };
 }
 
+function titleLayout(text) {
+    return {
+        text: text,
+        x: 0.5,
+        y: 0.90,
+        xanchor: "center",
+        yanchor: "top"
+    };
+}
+
 function applyChartLabels(App) {
     if (!App || !App.state) {
         return null;
@@ -149,9 +161,100 @@ function applyChartLabels(App) {
         disclaimer.textContent = labels.disclaimer;
     }
     return {
-        "title.text": title,
+        title: titleLayout(title),
         "yaxis.title.text": labels.yaxis
     };
+}
+
+function layoutTitleText(layout) {
+    if (!layout || !layout.title) {
+        return null;
+    }
+    return typeof layout.title === "string" ? layout.title : layout.title.text;
+}
+
+function ymdRange(range) {
+    if (!range || range.length < 2) {
+        return null;
+    }
+    var left = ymd(range[0]);
+    var right = ymd(range[1]);
+    if (!left || !right) {
+        return null;
+    }
+    return left + "/" + right;
+}
+
+// Skip Plotly.relayout when the plot already shows the intended title and
+// window, so a post-plot hook cannot loop after it writes the new title.
+function focusUpdateIsCurrent(plot, update) {
+    if (!plot || !plot.layout || !update) {
+        return false;
+    }
+    var layout = plot.layout;
+    if (update.title && update.title.text && layoutTitleText(layout) !== update.title.text) {
+        return false;
+    }
+    if (update["yaxis.title.text"]) {
+        var yTitle = layout.yaxis && layout.yaxis.title && layout.yaxis.title.text;
+        if (yTitle !== update["yaxis.title.text"]) {
+            return false;
+        }
+    }
+    if (update["xaxis.range"] && ymdRange(layout.xaxis && layout.xaxis.range) !== ymdRange(update["xaxis.range"])) {
+        return false;
+    }
+    if (Object.prototype.hasOwnProperty.call(update, "yaxis.range")) {
+        var yRange = layout.yaxis && layout.yaxis.range;
+        var want = update["yaxis.range"];
+        if (!yRange || yRange.length < 2 || Number(yRange[0]) !== Number(want[0]) || Number(yRange[1]) !== Number(want[1])) {
+            return false;
+        }
+    }
+    if (Object.prototype.hasOwnProperty.call(update, "yaxis.autorange") && !!(layout.yaxis && layout.yaxis.autorange) !== !!update["yaxis.autorange"]) {
+        return false;
+    }
+    return true;
+}
+
+function clearScheduledFocusRange(App) {
+    if (!App) {
+        return;
+    }
+    if (App._focusRangeTimer) {
+        clearTimeout(App._focusRangeTimer);
+        App._focusRangeTimer = null;
+    }
+    var plot = typeof document !== "undefined" ? document.getElementById("ploty_div") : null;
+    if (plot && plot.removeListener && App._focusAfterPlot) {
+        plot.removeListener("plotly_afterplot", App._focusAfterPlot);
+    }
+    App._focusAfterPlot = null;
+}
+
+function scheduleApplyFocusRange(App) {
+    if (!App) {
+        return;
+    }
+    // updatePlot() calls Plotly.react without waiting. Relayout now would be
+    // overwritten by that redraw, leaving the first Outcome's title (COVID)
+    // on flu and dengue. Wait until the plot is idle, then apply once.
+    clearScheduledFocusRange(App);
+    App._focusRangePending = true;
+    var run = function () {
+        if (!App._focusRangePending) {
+            return;
+        }
+        App._focusRangePending = false;
+        clearScheduledFocusRange(App);
+        applyFocusRange(App);
+    };
+    var plot = typeof document !== "undefined" ? document.getElementById("ploty_div") : null;
+    if (plot && typeof plot.once === "function") {
+        App._focusAfterPlot = run;
+        plot.once("plotly_afterplot", run);
+    }
+    App._focusRangeTimer = setTimeout(run, 50);
 }
 
 function minDate(dates) {
@@ -336,9 +439,11 @@ function applyFocusRange(App, options) {
         }
     }
     if (plot && hasUpdate && typeof Plotly !== "undefined" && typeof Plotly.relayout === "function") {
-        Plotly.relayout(plot, update);
-        if (update["xaxis.range"] && typeof App.initializeDateRangePicker === "function") {
-            App.initializeDateRangePicker();
+        if (!focusUpdateIsCurrent(plot, update)) {
+            Plotly.relayout(plot, update);
+            if (update["xaxis.range"] && typeof App.initializeDateRangePicker === "function") {
+                App.initializeDateRangePicker();
+            }
         }
     }
     App.state._focusRangeApplied = true;
@@ -421,6 +526,14 @@ function installForecastWindow(App) {
     }
     App.__forecastWindowInstalled = true;
     var origFetch = App.fetchDataUpdatePlot.bind(App);
+    var origUpdatePlot = typeof App.updatePlot === "function" ? App.updatePlot.bind(App) : null;
+    if (origUpdatePlot && !App.__forecastWindowUpdatePlotWrapped) {
+        App.__forecastWindowUpdatePlotWrapped = true;
+        App.updatePlot = function (isResetYLimit) {
+            origUpdatePlot(isResetYLimit);
+            scheduleApplyFocusRange(App);
+        };
+    }
     var fetchGen = 0;
     App.fetchDataUpdatePlot = function (isFetchFirst, isFetchCurrentTruth) {
         if (!isFetchFirst) {
@@ -445,7 +558,7 @@ function installForecastWindow(App) {
                     App.updateModelsList();
                 }
                 App.updatePlot(isResetYLimit);
-                applyFocusRange(App);
+                scheduleApplyFocusRange(App);
                 fadePlot(App, 1.0);
             });
         }).catch(function (error) {

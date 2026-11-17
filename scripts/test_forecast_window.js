@@ -252,10 +252,11 @@ assertEqual(dengueUpdate["xaxis.range"], ["2024-11-01", "2027-03-01"], "relayout
 assertEqual(dengueUpdate["yaxis.range"], [0, 30000], "dengue relayout sets 0-30k y-axis");
 assertEqual(dengueUpdate["yaxis.autorange"], false, "dengue y-axis is fixed");
 assertEqual(
-    dengueUpdate["title.text"],
+    dengueUpdate.title && dengueUpdate.title.text,
     "中国登革热报告病例数预测（法定传染病月报）<br>截至 2026-11-01",
     "dengue relayout sets the dengue title"
 );
+assertEqual(dengueUpdate.title.xanchor, "center", "dengue title is a full Plotly title object");
 assertEqual(dengueUpdate["yaxis.title.text"], "报告病例数", "dengue y-axis title is case counts");
 assert(app.pickerInited, "date range picker is re-bound");
 assert(app.state._focusRangeApplied, "marks first apply");
@@ -272,10 +273,87 @@ assert(
     "covid relayout does not keep the dengue y-axis"
 );
 assert(
-    covidUpdate["title.text"].indexOf("新冠") !== -1 &&
-        covidUpdate["title.text"].indexOf("登革") === -1,
+    covidUpdate.title.text.indexOf("新冠") !== -1 &&
+        covidUpdate.title.text.indexOf("登革") === -1,
     "covid relayout uses the covid title"
 );
+
+// If the plot already shows the intended title and window, do not relayout
+// again (avoids a plotly_afterplot loop).
+const alreadyAppliedPlot = {
+    id: "ploty_div",
+    layout: {
+        title: covidUpdate.title,
+        xaxis: { range: covidUpdate["xaxis.range"] || ["2025-11-10", "2026-12-28"] },
+        yaxis: {
+            title: { text: covidUpdate["yaxis.title.text"] },
+            autorange: true
+        }
+    }
+};
+assert(
+    context2.focusUpdateIsCurrent(alreadyAppliedPlot, covidUpdate),
+    "skips relayout when the flu/covid title and window are already on the plot"
+);
+const staleCovidPlot = {
+    id: "ploty_div",
+    layout: {
+        title: { text: "中国新冠 ILI 阳性率预测（疾控哨点监测）<br>截至 2026-11-09" },
+        xaxis: { range: ["2025-11-10", "2026-12-28"] },
+        yaxis: { title: { text: "阳性率（%）" }, autorange: true }
+    }
+};
+assert(
+    !context2.focusUpdateIsCurrent(staleCovidPlot, dengueUpdate),
+    "does not skip relayout when the plot still has the previous Outcome title"
+);
+
+// scheduleApplyFocusRange waits for plot idle (afterplot or a short timeout)
+// so Plotly.react cannot overwrite the new Outcome title.
+const scheduled = [];
+const fakePlot = {
+    id: "ploty_div",
+    layout: { title: { text: "stale covid title" } },
+    once: function (event, handler) {
+        this.event = event;
+        this.handler = handler;
+    },
+    removeListener: function (event, handler) {
+        if (this.event === event && this.handler === handler) {
+            this.event = null;
+            this.handler = null;
+        }
+    }
+};
+const schedContext = {
+    console,
+    URLSearchParams,
+    document: { getElementById: function () { return fakePlot; } },
+    Plotly: {
+        relayout: function (plot, update) { this.calls.push(update); },
+        calls: []
+    },
+    window: { location: { search: "" } },
+    setTimeout: function (fn, ms) { scheduled.push({ fn: fn, ms: ms }); return scheduled.length; },
+    clearTimeout: function (id) { scheduled.cleared = id; }
+};
+vm.createContext(schedContext);
+vm.runInContext(source, schedContext);
+const schedApp = { state: JSON.parse(JSON.stringify(dengueState)) };
+schedContext.scheduleApplyFocusRange(schedApp);
+assertEqual(schedContext.Plotly.calls.length, 0, "does not relayout until the plot is idle");
+assertEqual(fakePlot.event, "plotly_afterplot", "listens for plotly_afterplot");
+assert(scheduled.length === 1 && scheduled[0].ms === 50, "also sets a short fallback timer");
+fakePlot.handler();
+assertEqual(schedContext.Plotly.calls.length, 1, "afterplot applies the new Outcome title once");
+assertEqual(
+    schedContext.Plotly.calls[0].title.text,
+    "中国登革热报告病例数预测（法定传染病月报）<br>截至 2026-11-01",
+    "idle hook writes the dengue title, not the leftover covid title"
+);
+assertEqual(schedContext.Plotly.calls[0]["yaxis.title.text"], "报告病例数", "idle hook also sets the dengue y-axis title");
+scheduled[0].fn();
+assertEqual(schedContext.Plotly.calls.length, 1, "fallback timer does not apply a second time after afterplot");
 
 const urlContext = {
     console,
