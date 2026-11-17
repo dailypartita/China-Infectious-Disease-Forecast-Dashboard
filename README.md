@@ -31,13 +31,18 @@ Raw forecasts, target data, and Hub configuration are available via the [data pa
 
 ## Active Models
 
+Registered models aligned with Hub [`model-metadata/`](https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/tree/main/model-metadata) (19):
+
 | Team | Models |
 |------|--------|
-| GZNL | NextWave |
+| CNCovidHub | ensemble (hub weighted quantile ensemble) |
+| GZNL | NextWave, VincentAvg, Mantis; FluLGBMCQR; DengueLGBMCQR, DengueSARIMAX |
+| LZU | Sentinel, ASVENKF, LES, SetPredict, SinglePoint |
 | XMU_CTModelling | FNN, LSTM, XGBoost, GRU, TCN |
 | MUST | SEIRS |
+| YIMUU | DiffQGBM |
 
-See the [Evaluation page](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/eval.html) for latest rankings.
+The list follows Hub metadata; the forecast-page picker also filters by Hub registration and which targets have forecast files. See the [Evaluation page](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/eval.html) for latest rankings.
 
 ## Data Updates
 
