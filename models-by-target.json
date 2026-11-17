@@ -21,6 +21,7 @@
         "GZNL-FluLGBMCQR"
     ],
     "mo inc dengue cases": [
-        "GZNL-DengueLGBMCQR"
+        "GZNL-DengueLGBMCQR",
+        "GZNL-DengueSARIMAX"
     ]
 }
