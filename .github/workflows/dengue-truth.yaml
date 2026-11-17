@@ -20,7 +20,9 @@ name: Patch dengue truth and as-of options
 # same run writes models-by-target.json so the forecast page can list the
 # models that have forecast data for the selected target. That mapping is not
 # stored in predtimechart-options.json: predtimechart v3 rejects extra fields.
-# workflow_dispatch runs the same patch without waiting for Rebuild Data.
+# It also fills each as-of T's forecast JSON with that model's latest
+# still-registered submission whose reference_date is <= T, isolated by
+# target. workflow_dispatch runs the same patch without waiting for Rebuild Data.
 on:
   workflow_run:
     workflows: [Rebuild Data]
@@ -58,12 +60,12 @@ jobs:
       - name: Commit and push if changed
         working-directory: ptc-data
         run: |
-          git add -- targets/ predtimechart-options.json models-by-target.json
+          git add -- targets/ forecasts/ predtimechart-options.json models-by-target.json
           if [[ -z "$(git diff --cached --name-only)" ]]; then
             echo "no changes"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "data: patch dengue truth, as-of dates, and forecast model list"
+            git commit -m "data: patch dengue truth, as-of dates, model list, and carry-forward forecasts"
             git push origin ptc/data
           fi

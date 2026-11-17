@@ -10,6 +10,11 @@
 // Switching Outcome selects that target's full list again; unchecking a
 // model is kept until the Outcome (or the allowed list) changes. A URL
 // with ?model= is honored on the first load only.
+// PredTimeChart disables and grays a checkbox when the as-of forecast
+// JSON has no key for that model. After carry-forward, models with a
+// latest submission at or before T are in that JSON and stay enabled.
+// A model whose first submission is after T stays in the picker and
+// should remain checkable, but has no curve until a forecast exists.
 
 var TARGET_MODELS_URL = "https://raw.githubusercontent.com/dailypartita/China-Infectious-Disease-Forecast-Dashboard/refs/heads/ptc/data/models-by-target.json";
 var targetModelsByTarget = null;
@@ -63,6 +68,33 @@ function selectedModelsKey(models) {
     return (models || []).slice().sort().join("\0");
 }
 
+function modelsMissingForecasts(state) {
+    var forecasts = state && state.forecasts && typeof state.forecasts === "object" &&
+        !Array.isArray(state.forecasts) ? state.forecasts : {};
+    return (state && state.models ? state.models : []).filter(function (model) {
+        return !Object.prototype.hasOwnProperty.call(forecasts, model);
+    });
+}
+
+function enableListedModelsWithoutForecasts(state) {
+    var missing = modelsMissingForecasts(state);
+    if (typeof document === "undefined") {
+        return missing;
+    }
+    for (var i = 0; i < missing.length; i++) {
+        var input = document.getElementById(missing[i]);
+        if (!input) {
+            continue;
+        }
+        input.disabled = false;
+        var row = input.parentNode;
+        if (row && row.style) {
+            row.style.color = "";
+        }
+    }
+    return missing;
+}
+
 function installTargetModelFilter(App) {
     if (App.__targetModelsInstalled) {
         return;
@@ -70,10 +102,17 @@ function installTargetModelFilter(App) {
     App.__targetModelsInstalled = true;
     var origUpdate = App.updateModelsList.bind(App);
     var origInit = App.initialize.bind(App);
+    if (typeof App.selectableModels === "function") {
+        App.selectableModels = function () {
+            applyTargetModelList(App.state, targetModelsByTarget);
+            return (App.state.models || []).slice();
+        };
+    }
     App.updateModelsList = function () {
         var before = selectedModelsKey(App.state.selected_models);
         applyTargetModelList(App.state, targetModelsByTarget);
         var result = origUpdate();
+        enableListedModelsWithoutForecasts(App.state);
         var after = selectedModelsKey(App.state.selected_models);
         var plot = document.getElementById("ploty_div");
         if (before !== after && typeof App.updatePlot === "function" && plot && "data" in plot) {

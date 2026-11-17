@@ -147,4 +147,38 @@ assertEqual(
     "switching outcome still selects all models for the new target"
 );
 
+
+const missingFn = context.modelsMissingForecasts;
+if (typeof missingFn !== "function") {
+    throw new Error("modelsMissingForecasts was not defined");
+}
+
+const asOfState = {
+    models: byTarget["wk inc covid prop ili"],
+    forecasts: {
+        "GZNL-NextWave": { target_end_date: ["2026-11-09"] },
+        "LZU-Sentinel": { target_end_date: ["2026-11-02"] },
+    },
+};
+assertEqual(
+    missingFn(asOfState),
+    byTarget["wk inc covid prop ili"].filter(function (model) {
+        return model !== "GZNL-NextWave" && model !== "LZU-Sentinel";
+    }),
+    "models with no forecast at T stay listed as missing"
+);
+assertEqual(
+    missingFn({
+        models: ["GZNL-NextWave", "GZNL-Mantis"],
+        forecasts: { "GZNL-NextWave": {}, "GZNL-Mantis": {} },
+    }),
+    [],
+    "carry-forward keys are treated as present"
+);
+assertEqual(
+    missingFn({ models: ["GZNL-FluLGBMCQR"], forecasts: [] }),
+    ["GZNL-FluLGBMCQR"],
+    "non-object forecasts leave the target list enabled"
+);
+
 console.log("target model filter tests passed");
