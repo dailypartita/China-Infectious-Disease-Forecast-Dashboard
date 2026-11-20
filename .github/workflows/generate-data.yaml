@@ -195,13 +195,34 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token || secrets.key }}
           REPO: ${{ needs.check.outputs.repo }}
         run: |
-          exists=$(curl -sSL "https://api.github.com/repos/$REPO/branches" | jq -r '.[].name | select(. == "predevals/data")')
-          echo $exists
-          if [[ "$exists" = "predevals/data" ]]; then
-            fetch=true
-          else
-            fetch=false
+          # An unauthenticated list has come back as a JSON string. jq then
+          # exits 5, the workflow is marked failed, and the truth-data patch
+          # does not run. Accept either an array of branch objects or names,
+          # and still try the existing branch when the payload is unusable.
+          payload=$(mktemp)
+          if ! http_code=$(curl -sS -o "$payload" -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: hub-dashboard-rebuild" \
+            "https://api.github.com/repos/${REPO}/branches?per_page=100"); then
+            http_code="000"
           fi
+          exists=$(jq -r '
+            if type == "array" then
+              .[] | if type == "object" then .name elif type == "string" then . else empty end
+            else empty end
+            | select(. == "predevals/data")
+          ' "$payload" 2>/dev/null || true)
+          kind=$(jq -r 'type' "$payload" 2>/dev/null || echo invalid)
+          if [[ "$exists" == "predevals/data" ]]; then
+            fetch=true
+          elif [[ "$http_code" == "200" && "$kind" == "array" ]]; then
+            fetch=false
+          else
+            echo "branch list HTTP ${http_code} type ${kind}; trying predevals/data anyway"
+            fetch=true
+          fi
+          rm -f "$payload"
           echo "fetch=$fetch" >> "$GITHUB_OUTPUT"
       - id: checkout-data
         if: ${{ fromJSON(steps.check-branch.outputs.fetch) }}
