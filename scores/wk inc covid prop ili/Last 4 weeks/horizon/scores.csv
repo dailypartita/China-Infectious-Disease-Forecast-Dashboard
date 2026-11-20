@@ -1,3 +1,4 @@
 "model_id","horizon","ae_median","wis","interval_coverage_95","n"
-"GZNL-NextWave",0,0.42,0.398052173913044,1,1
-"GZNL-VincentAvg",0,0.67,0.442721739130435,1,1
+"GZNL-NextWave",0,0.44,0.3456,1,2
+"GZNL-VincentAvg",0,0.44,0.308073913043478,1,2
+"LZU-Sentinel",0,19.67,10.0723652173913,1,1
