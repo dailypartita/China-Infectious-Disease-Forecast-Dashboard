@@ -34,6 +34,12 @@ on:
 permissions:
   contents: write
 
+# Share the rebuild lock so a backup cron cannot push ptc/data while this
+# patch is rewriting the same branch.
+concurrency:
+  group: publish-dashboard-data
+  cancel-in-progress: false
+
 jobs:
   patch:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}

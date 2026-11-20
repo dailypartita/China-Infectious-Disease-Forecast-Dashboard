@@ -9,6 +9,10 @@ on:
         default: true
   push:
     branches: [main]
+    # Forecast JSON is loaded from the ptc/data branch at page view. Rebuilding
+    # the site for a data-only request would republish unchanged HTML.
+    paths-ignore:
+      - .github/rebuild-data-request
   pull_request:
     branches: [main]
 

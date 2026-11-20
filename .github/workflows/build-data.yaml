@@ -8,10 +8,9 @@ name: "Rebuild Data"
 # overlapping observations is skipped instead of failing the run.
 on:
   schedule:
-    # Friday 14:00 UTC ≈ Friday 22:00 Asia/Shanghai — well after Hub sync-target-data (Fri 08:00 UTC),
-    # accounting for common GitHub Actions schedule delays (up to ~6 h observed).
+    # Backup only. The hub pushes .github/rebuild-data-request as soon as
+    # target-data changes, and that push is what normally starts this workflow.
     - cron: "0 14 * * 5"
-    # Sunday backup 14:00 UTC ≈ Sunday 22:00 Asia/Shanghai — after Hub Sunday sync (Sun 08:00 UTC)
     - cron: "0 14 * * 0"
   pull_request:
     branches: [main]
@@ -20,6 +19,9 @@ on:
     paths:
       - predtimechart-config.yml
       - predevals-config.yml
+      # Written by the hub as soon as target-data changes. The forecast page
+      # reads ptc/data directly, so this rebuild is what updates the site.
+      - .github/rebuild-data-request
   workflow_dispatch:
     inputs:
       regenerate:
@@ -48,6 +50,12 @@ on:
 
 permissions:
   contents: write
+
+# One publisher at a time. The Friday/Sunday cron is only a backup for a
+# missed hub request, and it must not race the request-triggered rebuild.
+concurrency:
+  group: publish-dashboard-data
+  cancel-in-progress: false
 
 jobs:
   detect:
