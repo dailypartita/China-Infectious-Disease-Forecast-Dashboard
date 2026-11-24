@@ -14,3 +14,4 @@ html:
   include-after-body: resources/after-body.html
 pages:
   - data.qmd
+  - guangdong-dengue.qmd

@@ -1,0 +1,37 @@
+---
+title: "Guangdong dengue"
+title-block: true
+---
+
+## 广东省登革热报告病例（月度）
+
+广东省法定传染病月报中的登革热**本期发病数**（全省，含输入，除非脚注另有说明）。这不是全国 hub 目标 `mo inc dengue cases` 的分省拆分，也不在预测页 PredTimeChart 里展示。
+
+序列由 [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard) 日常同步维护，并自动回写到本站 [`resources/guangdong_dengue_monthly.csv`](resources/guangdong_dengue_monthly.csv)。
+
+```{=html}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<div id="gd-dengue-chart" style="width:100%;height:520px;"></div>
+<p class="text-muted" id="gd-dengue-caption"></p>
+<script src="resources/guangdong-dengue.js"></script>
+```
+
+### 数据来源
+
+| 时段 | 来源 |
+|------|------|
+| 约 2004–2021 | [公共卫生科学数据中心](https://www.phsciencedata.cn/Share/ky_sjml.jsp) |
+| 官方缺失且 ≥2022-01 时 | [Zenodo 2016–2024](https://doi.org/10.5281/zenodo.18391003)（历史对照） |
+| 近年有官方月报的月份 | [省卫健委疫情信息](https://wsjkw.gd.gov.cn/zwyw_yqxx/)、[省疾控](https://cdcp.gd.gov.cn/) |
+
+缺失月在 CSV 中留空，图上表现为断点，**不手填 0**。已核验的 0 会画成 0。
+
+下载：[CSV](resources/guangdong_dengue_monthly.csv) · 清洗主表与同步说明见 [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard)。
+
+---
+
+## English
+
+Monthly reported dengue cases for **Guangdong province** from public provincial notifiable-disease bulletins. This series is **not** a provincial split of the national hub target `mo inc dengue cases`, and it is not plotted on the forecast page.
+
+Maintained in [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard) and synced here as [`resources/guangdong_dengue_monthly.csv`](resources/guangdong_dengue_monthly.csv). Months without a verified count are left blank (chart breaks), not filled as zero.

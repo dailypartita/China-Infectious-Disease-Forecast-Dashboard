@@ -29,6 +29,10 @@ Interactive forecasting and evaluation platform built on the [Hubverse](https://
 
 Raw forecasts, target data, and Hub configuration are available via the [data page](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/data.html) or the Forecast Hub repository.
 
+### Guangdong dengue
+
+Provincial monthly reported dengue cases (not the national hub target) are plotted on [Guangdong dengue](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/guangdong-dengue.html). The CSV is synced from [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard) after each successful CDC ingest.
+
 ## Active Models
 
 Registered models aligned with Hub [`model-metadata/`](https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/tree/main/model-metadata) (19):

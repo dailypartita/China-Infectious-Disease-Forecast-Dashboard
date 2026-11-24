@@ -45,20 +45,32 @@
         [{
           type: "scatter",
           mode: "lines",
-          name: "Reported cases",
+          name: "报告病例数",
           x: rows.map(function (row) { return row.date; }),
           y: rows.map(function (row) { return row.cases; }),
           customdata: rows.map(function (row) {
-            return [row.year_month, row.source];
+            return [row.year_month, row.source || "（无来源）"];
           }),
           connectgaps: false,
-          line: { color: "#c0392b", width: 1.6 },
-          hovertemplate: "%{customdata[0]}<br>Cases: %{y:,}<br>%{customdata[1]}<extra></extra>"
+          line: { color: "#c0392b", width: 1.8 },
+          hovertemplate:
+            "%{customdata[0]}<br>病例数：%{y:,}<br>%{customdata[1]}<extra></extra>"
         }],
         {
-          margin: { t: 16, r: 24, b: 48, l: 64 },
-          xaxis: { title: "Month", showgrid: false },
-          yaxis: { title: "Reported cases", rangemode: "tozero", separatethousands: true, gridcolor: "#eee" },
+          title: {
+            text: "广东省登革热报告病例（月度）",
+            x: 0,
+            xanchor: "left",
+            font: { size: 16 }
+          },
+          margin: { t: 48, r: 24, b: 48, l: 64 },
+          xaxis: { title: "月份", showgrid: false },
+          yaxis: {
+            title: "报告病例数",
+            rangemode: "tozero",
+            separatethousands: true,
+            gridcolor: "#eee"
+          },
           hovermode: "closest",
           showlegend: false,
           paper_bgcolor: "rgba(0,0,0,0)",
@@ -73,12 +85,12 @@
         const last = observed[observed.length - 1].year_month;
         const missing = rows.length - observed.length;
         caption.textContent =
-          observed.length + " months with reported counts (" + first + " to " + last +
-          "); " + missing + " months left blank and shown as breaks.";
+          "共 " + observed.length + " 个月有报告病例数（" + first + " 至 " + last +
+          "）；" + missing + " 个月留空，图中为断点。数据由 cn_cdc_dashboard 日常同步。";
       }
     })
     .catch(function (err) {
-      chartEl.textContent = "Unable to load the Guangdong dengue series.";
+      chartEl.textContent = "无法加载广东省登革热序列。";
       console.error(err);
     });
 })();

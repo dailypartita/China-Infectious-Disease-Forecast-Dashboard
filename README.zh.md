@@ -29,6 +29,10 @@
 
 原始预测数据、目标数据及 Hub 配置可通过 [数据获取页面](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/data.html) 或 Forecast Hub 仓库直接访问。
 
+### 广东登革热
+
+广东省月度报告病例（不是全国 hub 目标）见专页 [广东登革热](https://dailypartita.github.io/China-Infectious-Disease-Forecast-Dashboard/guangdong-dengue.html)。CSV 由 [cn_cdc_dashboard](https://github.com/dailypartita/cn_cdc_dashboard) 在每次成功入库后自动回写。
+
 ## 参与模型
 
 与 Hub [`model-metadata/`](https://github.com/dailypartita/China-Infectious-Disease-Forecast-Hub/tree/main/model-metadata) 对齐的已注册模型（19 个）：
